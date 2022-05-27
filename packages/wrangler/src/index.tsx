@@ -964,6 +964,10 @@ function createCLIParser(argv: string[]) {
           describe: "Enable persistence for this session (only for local mode)",
           type: "boolean",
         })
+        .option("experimental-local-persistence-dest", {
+          describe: "Destination to store Durable/Cache/Kv (only for local mode)",
+          type: "string",
+        })
         .option("inspect", {
           describe: "Enable dev tools",
           type: "boolean",
@@ -1138,6 +1142,9 @@ function createCLIParser(argv: string[]) {
           localProtocol={args["local-protocol"] || config.dev.local_protocol}
           enableLocalPersistence={
             args["experimental-enable-local-persistence"] || false
+          }
+          localPersistenceDestination={
+            args["experimental-local-persistence-dest"]
           }
           accountId={accountId}
           assetPaths={getAssetPaths(

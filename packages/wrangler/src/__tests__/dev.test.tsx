@@ -824,6 +824,7 @@ describe("wrangler dev", () => {
               --minify                                     Minify the script  [boolean]
               --node-compat                                Enable node.js compatibility  [boolean]
               --experimental-enable-local-persistence      Enable persistence for this session (only for local mode)  [boolean]
+              --experimental-local-persistence-dest        Destination to store Durable/Cache/Kv (only for local mode)  [string]
               --inspect                                    Enable dev tools  [deprecated] [boolean]",
           "warn": "",
         }

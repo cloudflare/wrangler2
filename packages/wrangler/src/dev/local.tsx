@@ -28,6 +28,7 @@ interface LocalProps {
   rules: Config["rules"];
   inspectorPort: number;
   enableLocalPersistence: boolean;
+  localPersistenceDestination: string|undefined;
   crons: Config["triggers"]["crons"];
 }
 
@@ -53,6 +54,7 @@ function useLocalWorker({
   port,
   rules,
   enableLocalPersistence,
+  localPersistenceDestination,
   ip,
   crons,
 }: LocalProps) {
@@ -65,11 +67,33 @@ function useLocalWorker({
   // which disappears when dev ends
   const localPersistencePath = enableLocalPersistence
     ? // Maybe we could make the path configurable as well?
-      path.join(process.cwd(), "wrangler-local-state")
+      ( localPersistenceDestination ?? path.join(process.cwd(), "wrangler-local-state") )
     : // We otherwise choose null, but choose true later
       // so that it's persisted in the temp dir across a dev session
       // even when we change source and reload
       null;
+
+  // We mark these as true, so that they'll
+  // persist in the temp directory.
+  // This means they'll persist across a dev session,
+  // even if we change source and reload,
+  // and be deleted when the dev session ends
+  const persistOptions = {
+    durableObjectsPersist: true as string|boolean,
+    cachePersist: true as string|boolean,
+    kvPersist: true as string|boolean,
+  };
+
+  if(localPersistencePath){
+    if(localPersistencePath.startsWith("redis://")){
+      persistOptions.durableObjectsPersist = persistOptions.cachePersist = persistOptions.kvPersist = localPersistencePath;
+    } else {
+      persistOptions.durableObjectsPersist = path.join(localPersistencePath, "kv");
+      persistOptions.cachePersist = path.join(localPersistencePath, "do");
+      persistOptions.kvPersist = path.join(localPersistencePath, "cache");
+    }
+  }
+
   useEffect(() => {
     const abortController = new AbortController();
     async function startLocalWorker() {
@@ -181,22 +205,8 @@ function useLocalWorker({
             (value) => [value.name, value.class_name]
           )
         ),
-        ...(localPersistencePath
-          ? {
-              kvPersist: path.join(localPersistencePath, "kv"),
-              durableObjectsPersist: path.join(localPersistencePath, "do"),
-              cachePersist: path.join(localPersistencePath, "cache"),
-            }
-          : {
-              // We mark these as true, so that they'll
-              // persist in the temp directory.
-              // This means they'll persist across a dev session,
-              // even if we change source and reload,
-              // and be deleted when the dev session ends
-              durableObjectsPersist: true,
-              cachePersist: true,
-              kvPersist: true,
-            }),
+
+        ...persistOptions,
 
         sitePath: assetPaths?.assetDirectory
           ? path.join(assetPaths.baseDirectory, assetPaths.assetDirectory)
@@ -306,6 +316,7 @@ function useLocalWorker({
     compatibilityDate,
     compatibilityFlags,
     localPersistencePath,
+    localPersistenceDestination,
     assetPaths,
     publicDirectory,
     rules,

@@ -41,6 +41,7 @@
     "blake3-wasm": "^2.1.5",
     "esbuild": "0.14.34",
     "miniflare": "2.4.0",
+    "@miniflare/storage-redis": "2.4.0",
     "nanoid": "^3.3.3",
     "path-to-regexp": "^6.2.0",
     "selfsigned": "^2.0.1",
