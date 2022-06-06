@@ -736,6 +736,58 @@ describe("wrangler dev", () => {
       `);
       expect(std.err).toMatchInlineSnapshot(`""`);
     });
+
+    it("should apply migrations for durable objects", async () => {
+      writeWranglerToml({
+        durable_objects: {
+          bindings: [
+            { name: "SOMENAME", class_name: "SomeClass" },
+            { name: "SOMEOTHERNAME", class_name: "SomeOtherClass" },
+          ],
+        },
+        migrations: [
+          { tag: "v1", new_classes: ["SomeClass"] },
+          { tag: "v2", new_classes: ["SomeOtherClass"] },
+        ],
+      });
+      fs.writeFileSync(
+        "index.js",
+        `export class SomeClass{}; export class SomeOtherClass{}; export default {};`
+      );
+
+      mockLegacyScriptData({ scripts: [] }); // no previously uploaded scripts at all
+
+      await runWrangler("dev index.js");
+      expect((Dev as jest.Mock).mock.calls[0][0].migrations)
+        .toMatchInlineSnapshot(`
+        Object {
+          "new_tag": "v2",
+          "steps": Array [
+            Object {
+              "new_classes": Array [
+                "SomeClass",
+              ],
+            },
+            Object {
+              "new_classes": Array [
+                "SomeOtherClass",
+              ],
+            },
+          ],
+        }
+      `);
+      expect(std).toMatchInlineSnapshot(`
+        Object {
+          "debug": "",
+          "err": "",
+          "out": "Your worker has access to the following bindings:
+        - Durable Objects:
+          - SOMENAME: SomeClass
+          - SOMEOTHERNAME: SomeOtherClass",
+          "warn": "",
+        }
+      `);
+    });
   });
 
   describe(".dev.vars", () => {
@@ -975,6 +1027,21 @@ function mockGetZones(domain: string, zones: { id: string }[] = []) {
       // Because the API URL `/zones` is the same for each request, we can get into a situation where earlier mocks get triggered for later requests. So, we simply clear the mock on every trigger.
       removeMock();
       return zones;
+    }
+  );
+}
+
+// copied from publish.test.ts
+type LegacyScriptInfo = { id: string; migration_tag?: string };
+
+function mockLegacyScriptData(options: { scripts: LegacyScriptInfo[] }) {
+  const { scripts } = options;
+  setMockResponse(
+    "/accounts/:accountId/workers/scripts",
+    "GET",
+    ([_url, accountId]) => {
+      expect(accountId).toEqual("some-account-id");
+      return scripts;
     }
   );
 }
