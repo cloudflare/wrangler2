@@ -120,6 +120,9 @@ function isWindows() {
 }
 
 const SECONDS_TO_WAIT_FOR_PROXY = 5;
+const DURABLE_OBJECTS_BINDING_REGEXP = new RegExp(
+  /^(?<binding>[^=]+)=(?<className>[^@\s]+)(@(?<scriptName>.*)$)?$/
+);
 
 async function sleep(ms: number) {
   await new Promise((resolve) => setTimeout(resolve, ms));
@@ -1493,8 +1496,8 @@ export const pages: BuilderCallback<unknown, unknown> = (yargs) => {
         proxy: requestedProxyPort,
         "script-path": singleWorkerScriptPath,
         binding: bindings = [],
-        kv: kvs = [],
-        do: durableObjects = [],
+        kv: kvBindings = [],
+        do: durableObjectBindings = [],
         "live-reload": liveReload,
         "node-compat": nodeCompat,
         _: [_pages, _dev, ...remaining],
@@ -1625,6 +1628,38 @@ export const pages: BuilderCallback<unknown, unknown> = (yargs) => {
         const requestContextCheckOptions =
           await getRequestContextCheckOptions();
 
+        const scriptNames = durableObjectBindings
+          .map(
+            (durableObjectBinding) =>
+              DURABLE_OBJECTS_BINDING_REGEXP.exec(
+                durableObjectBinding.toString()
+              )?.groups?.scriptName
+          )
+          .filter(Boolean);
+        const mounts = Object.fromEntries(
+          scriptNames.map((scriptName) => [scriptName, scriptName])
+        );
+        const kvNamespaces = kvBindings.map((kvBinding) =>
+          kvBinding.toString()
+        );
+        const durableObjects = Object.fromEntries(
+          durableObjectBindings.map((durableObjectBinding) => {
+            const groups = DURABLE_OBJECTS_BINDING_REGEXP.exec(
+              durableObjectBinding.toString()
+            )?.groups;
+            return [
+              groups?.binding,
+              { className: groups?.className, scriptName: groups?.scriptName },
+            ];
+          })
+        );
+
+        if (Object.keys(durableObjects).length > 0) {
+          console.log(
+            "Caution! The interface for setting Durable Objects is current under active deployment. It is liable to change at any time."
+          );
+        }
+
         const miniflare = new Miniflare({
           port,
           watch: true,
@@ -1634,13 +1669,9 @@ export const pages: BuilderCallback<unknown, unknown> = (yargs) => {
           logUnhandledRejections: true,
           sourceMap: true,
 
-          kvNamespaces: kvs.map((kv) => kv.toString()),
-
-          durableObjects: Object.fromEntries(
-            durableObjects.map((durableObject) =>
-              durableObject.toString().split("=")
-            )
-          ),
+          mounts,
+          kvNamespaces,
+          durableObjects,
 
           // User bindings
           bindings: {
