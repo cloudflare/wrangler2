@@ -8,7 +8,7 @@ import * as esbuild from "esbuild";
 import createModuleCollector from "./module-collection";
 import type { Config } from "./config";
 import type { Entry } from "./entry";
-import type { CfModule } from "./worker";
+import type { CfModule, CfScriptFormat } from "./worker";
 
 type BundleResult = {
   modules: CfModule[];
@@ -90,7 +90,10 @@ export async function bundleWorker(
   });
 
   const result = await esbuild.build({
-    ...getEntryPoint(entry.file, serveAssetsFromWorker),
+    ...getEntryPoint(entry.file, {
+      serveAssetsFromWorker,
+      format: entry.format,
+    }),
     bundle: true,
     absWorkingDir: entry.directory,
     outdir: destination,
@@ -100,11 +103,26 @@ export async function bundleWorker(
     sourcemap: true,
     minify,
     metafile: true,
+    ...(serveAssetsFromWorker && entry.format === "service-worker"
+      ? {
+          inject: [
+            path.join(
+              __dirname,
+              "../templates/sw-asset-facade-addEventListener.js"
+            ),
+          ],
+        }
+      : {}),
     conditions: ["worker", "browser"],
     ...(process.env.NODE_ENV && {
       define: {
         "process.env.NODE_ENV": `"${process.env.NODE_ENV}"`,
         ...(nodeCompat ? { global: "globalThis" } : {}),
+        ...(serveAssetsFromWorker && entry.format === "service-worker"
+          ? {
+              addEventListener: "swAssetHandlerAddEventListener",
+            }
+          : {}),
       },
     }),
     loader: {
@@ -165,14 +183,19 @@ type EntryPoint = { stdin: esbuild.StdinOptions } | { entryPoints: string[] };
  */
 function getEntryPoint(
   entryFile: string,
-  serveAssetsFromWorker: boolean
+  options: { serveAssetsFromWorker: boolean; format: CfScriptFormat }
 ): EntryPoint {
-  if (serveAssetsFromWorker) {
+  if (options.serveAssetsFromWorker) {
     return {
       stdin: {
         contents: fs
           .readFileSync(
-            path.join(__dirname, "../templates/static-asset-facade.js"),
+            path.join(
+              __dirname,
+              options.format === "modules"
+                ? "../templates/module-asset-facade.js"
+                : "../templates/sw-asset-facade.js"
+            ),
             "utf8"
           )
           // on windows, escape backslashes in the path (`\`)
@@ -183,7 +206,10 @@ function getEntryPoint(
               .join(__dirname, "../kv-asset-handler.js")
               .replaceAll("\\", "\\\\")
           ),
-        sourcefile: "static-asset-facade.js",
+        sourcefile:
+          options.format === "modules"
+            ? "module-asset-facade.js"
+            : "sw-asset-facade.js",
         resolveDir: path.dirname(entryFile),
       },
     };

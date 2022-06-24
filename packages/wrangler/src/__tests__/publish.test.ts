@@ -1506,30 +1506,6 @@ addEventListener('fetch', event => {});`
       `);
     });
 
-    it("should error when trying to use --assets with a service-worker Worker", async () => {
-      writeWranglerToml({
-        main: "./index.js",
-      });
-      writeWorkerSource({ type: "sw" });
-      await expect(
-        runWrangler("publish --assets abc")
-      ).rejects.toThrowErrorMatchingInlineSnapshot(
-        `"You cannot use the service-worker format with an \`assets\` directory yet. For information on how to migrate to the module-worker format, see: https://developers.cloudflare.com/workers/learning/migrating-to-module-workers/"`
-      );
-
-      expect(std).toMatchInlineSnapshot(`
-        Object {
-          "debug": "",
-          "err": "[31mX [41;31m[[41;97mERROR[41;31m][0m [1mYou cannot use the service-worker format with an \`assets\` directory yet. For information on how to migrate to the module-worker format, see: https://developers.cloudflare.com/workers/learning/migrating-to-module-workers/[0m
-
-        ",
-          "out": "
-        [32mIf you think this is a bug then please create an issue at https://github.com/cloudflare/wrangler2/issues/new/choose[0m",
-          "warn": "",
-        }
-      `);
-    });
-
     it("should error if --assets and --site are used together", async () => {
       writeWranglerToml({
         main: "./index.js",

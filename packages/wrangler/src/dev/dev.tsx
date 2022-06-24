@@ -54,16 +54,6 @@ export type DevProps = {
 };
 
 export function DevImplementation(props: DevProps): JSX.Element {
-  if (
-    !props.isWorkersSite &&
-    props.assetPaths &&
-    props.entry.format === "service-worker"
-  ) {
-    throw new Error(
-      "You cannot use the service-worker format with an `assets` directory yet. For information on how to migrate to the module-worker format, see: https://developers.cloudflare.com/workers/learning/migrating-to-module-workers/"
-    );
-  }
-
   if (props.bindings.wasm_modules && props.entry.format === "modules") {
     throw new Error(
       "You cannot configure [wasm_modules] with an ES module worker. Instead, import the .wasm module directly in your code"
