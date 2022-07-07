@@ -3,8 +3,9 @@ import { existsSync, lstatSync, readFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve as resolvePath } from "node:path";
 import { URL } from "node:url";
+import { Response } from "@miniflare/core"
 import { watch } from "chokidar";
-import { getType } from "mime";
+import { handle } from "../../../pages-shared";
 import { getVarsForDev } from "../dev/dev-vars";
 import { FatalError } from "../errors";
 import { logger } from "../logger";
@@ -15,10 +16,13 @@ import { SECONDS_TO_WAIT_FOR_PROXY } from "./constants";
 import { CLEANUP, CLEANUP_CALLBACKS, pagesBetaWarning } from "./utils";
 import type { Config } from "../config";
 import type {
-	fetch as miniflareFetch,
-	Headers as MiniflareHeaders,
+	fetch as miniflareFetch
 } from "@miniflare/core";
-import type { MiniflareOptions, Request as MiniflareRequest } from "miniflare";
+import type {
+	MiniflareOptions,
+	Request as MiniflareRequest,
+	Response as MiniflareResponse,
+} from "miniflare";
 import type { Argv, ArgumentsCamelCase } from "yargs";
 
 type PagesDevArgs = {
@@ -226,7 +230,7 @@ export const Handler = async ({
 
 	// Defer importing miniflare until we really need it
 	const { Miniflare, Log, LogLevel } = await import("miniflare");
-	const { Response, fetch } = await import("@miniflare/core");
+	const { fetch } = await import("@miniflare/core");
 
 	// Wait for esbuild to finish building before starting Miniflare.
 	// This must be before the call to `new Miniflare`, as that will
@@ -699,15 +703,11 @@ function validateURL(
 	return "";
 }
 
-function hasFileExtension(pathname: string) {
-	return /\/.+\.[a-z0-9]+$/i.test(pathname);
-}
-
 async function generateAssetsFetch(
 	directory: string
 ): Promise<typeof miniflareFetch> {
 	// Defer importing miniflare until we really need it
-	const { Headers, Request, Response } = await import("@miniflare/core");
+	const { Headers, Request } = await import("@miniflare/core");
 
 	const headersFile = join(directory, "_headers");
 	const redirectsFile = join(directory, "_redirects");
@@ -728,6 +728,7 @@ async function generateAssetsFetch(
 		if (assetExists(path)) {
 			return join(directory, path);
 		}
+		return null;
 	};
 
 	let redirectsMatcher = generateRedirectsMatcher(redirectsFile);
@@ -750,210 +751,83 @@ async function generateAssetsFetch(
 		}
 	});
 
-	const serveAsset = (file: string) => {
-		return readFileSync(file);
+	const serveAsset = async (file: string) => {
+		const result = readFileSync(file);
+		return new Response(result, { status: 200 });
 	};
 
-	const generateResponse = (request: MiniflareRequest) => {
-		const url = new URL(request.url);
+	const generateResponse = async (request: MiniflareRequest) => {
+		function applyRedirects(req: MiniflareRequest) {
+			const url = new URL(req.url);
+			const match = redirectsMatcher(req);
+			if (match) {
+				const { status, to } = match;
 
-		const deconstructedResponse: {
-			status: number;
-			headers: MiniflareHeaders;
-			body?: Buffer;
-		} = {
-			status: 200,
-			headers: new Headers(),
-			body: undefined,
-		};
+				let location = to;
+				let search;
 
-		const match = redirectsMatcher(request);
-		if (match) {
-			const { status, to } = match;
-
-			let location = to;
-			let search;
-
-			if (to.startsWith("/")) {
-				search = new URL(location, "http://fakehost").search;
-			} else {
-				search = new URL(location).search;
-			}
-
-			location = `${location}${search ? "" : url.search}`;
-
-			if (status && [301, 302, 303, 307, 308].includes(status)) {
-				deconstructedResponse.status = status;
-			} else {
-				deconstructedResponse.status = 302;
-			}
-
-			deconstructedResponse.headers.set("Location", location);
-			return deconstructedResponse;
-		}
-
-		if (!request.method?.match(/^(get|head)$/i)) {
-			deconstructedResponse.status = 405;
-			return deconstructedResponse;
-		}
-
-		const notFound = () => {
-			let cwd = url.pathname;
-			while (cwd) {
-				cwd = cwd.slice(0, cwd.lastIndexOf("/"));
-
-				if ((asset = getAsset(`${cwd}/404.html`))) {
-					deconstructedResponse.status = 404;
-					deconstructedResponse.body = serveAsset(asset);
-					deconstructedResponse.headers.set(
-						"Content-Type",
-						getType(asset) || "application/octet-stream"
-					);
-					return deconstructedResponse;
-				}
-			}
-
-			if ((asset = getAsset(`/index.html`))) {
-				deconstructedResponse.body = serveAsset(asset);
-				deconstructedResponse.headers.set(
-					"Content-Type",
-					getType(asset) || "application/octet-stream"
-				);
-				return deconstructedResponse;
-			}
-
-			deconstructedResponse.status = 404;
-			return deconstructedResponse;
-		};
-
-		let asset;
-
-		if (url.pathname.endsWith("/")) {
-			if ((asset = getAsset(`${url.pathname}/index.html`))) {
-				deconstructedResponse.body = serveAsset(asset);
-				deconstructedResponse.headers.set(
-					"Content-Type",
-					getType(asset) || "application/octet-stream"
-				);
-				return deconstructedResponse;
-			} else if (
-				(asset = getAsset(`${url.pathname.replace(/\/$/, ".html")}`))
-			) {
-				deconstructedResponse.status = 301;
-				deconstructedResponse.headers.set(
-					"Location",
-					`${url.pathname.slice(0, -1)}${url.search}`
-				);
-				return deconstructedResponse;
-			}
-		}
-
-		if (url.pathname.endsWith("/index")) {
-			deconstructedResponse.status = 301;
-			deconstructedResponse.headers.set(
-				"Location",
-				`${url.pathname.slice(0, -"index".length)}${url.search}`
-			);
-			return deconstructedResponse;
-		}
-
-		if ((asset = getAsset(url.pathname))) {
-			if (url.pathname.endsWith(".html")) {
-				const extensionlessPath = url.pathname.slice(0, -".html".length);
-				if (getAsset(extensionlessPath) || extensionlessPath === "/") {
-					deconstructedResponse.body = serveAsset(asset);
-					deconstructedResponse.headers.set(
-						"Content-Type",
-						getType(asset) || "application/octet-stream"
-					);
-					return deconstructedResponse;
+				if (to.startsWith("/")) {
+					search = new URL(location, "http://fakehost").search;
 				} else {
-					deconstructedResponse.status = 301;
-					deconstructedResponse.headers.set(
-						"Location",
-						`${extensionlessPath}${url.search}`
-					);
-					return deconstructedResponse;
+					search = new URL(location).search;
 				}
-			} else {
-				deconstructedResponse.body = serveAsset(asset);
-				deconstructedResponse.headers.set(
-					"Content-Type",
-					getType(asset) || "application/octet-stream"
-				);
-				return deconstructedResponse;
+
+				location = `${location}${search ? "" : url.search}`;
+
+				let responseStatus = 302;
+
+				if (status && [301, 302, 303, 307, 308].includes(status)) {
+					responseStatus = status;
+				}
+
+				return new Response(null, {
+					status: responseStatus,
+					headers: {
+						Location: location,
+					},
+				});
 			}
-		} else if (hasFileExtension(url.pathname)) {
-			notFound();
-			return deconstructedResponse;
 		}
+		function applyHeaders(req: MiniflareRequest, res: MiniflareResponse) {
+			const headers = res.headers;
+			const newHeaders = new Headers({});
+			const matches = headersMatcher(req) || [];
 
-		if ((asset = getAsset(`${url.pathname}.html`))) {
-			deconstructedResponse.body = serveAsset(asset);
-			deconstructedResponse.headers.set(
-				"Content-Type",
-				getType(asset) || "application/octet-stream"
-			);
-			return deconstructedResponse;
-		}
-
-		if ((asset = getAsset(`${url.pathname}/index.html`))) {
-			deconstructedResponse.status = 301;
-			deconstructedResponse.headers.set(
-				"Location",
-				`${url.pathname}/${url.search}`
-			);
-			return deconstructedResponse;
-		} else {
-			notFound();
-			return deconstructedResponse;
-		}
-	};
-
-	const attachHeaders = (
-		request: MiniflareRequest,
-		deconstructedResponse: {
-			status: number;
-			headers: MiniflareHeaders;
-			body?: Buffer;
-		}
-	) => {
-		const headers = deconstructedResponse.headers;
-		const newHeaders = new Headers({});
-		const matches = headersMatcher(request) || [];
-
-		matches.forEach((match) => {
-			Object.entries(match).forEach(([name, value]) => {
-				newHeaders.append(name, `${value}`);
+			matches.forEach((match) => {
+				Object.entries(match).forEach(([name, value]) => {
+					newHeaders.append(name, `${value}`);
+				});
 			});
+
+			const combinedHeaders = {
+				...Object.fromEntries(headers.entries()),
+				...Object.fromEntries(newHeaders.entries()),
+			};
+
+			const returnHeaders = new Headers({});
+			Object.entries(combinedHeaders).forEach(([name, value]) => {
+				if (value) res.headers.set(name, value);
+			});
+			return new Response(res.body, {
+				status: res.status,
+				headers: returnHeaders,
+			});
+		}
+
+		const assetHandler = await handle({
+			get: serveAsset,
+			find: getAsset,
+			applyRedirects,
+			applyHeaders,
 		});
-
-		const combinedHeaders = {
-			...Object.fromEntries(headers.entries()),
-			...Object.fromEntries(newHeaders.entries()),
-		};
-
-		deconstructedResponse.headers = new Headers({});
-		Object.entries(combinedHeaders).forEach(([name, value]) => {
-			if (value) deconstructedResponse.headers.set(name, value);
+		return assetHandler({
+			request,
 		});
 	};
 
 	return async (input, init) => {
 		const request = new Request(input, init);
-		const deconstructedResponse = generateResponse(request);
-		attachHeaders(request, deconstructedResponse);
-
-		const headers = new Headers();
-
-		[...deconstructedResponse.headers.entries()].forEach(([name, value]) => {
-			if (value) headers.set(name, value);
-		});
-
-		return new Response(deconstructedResponse.body, {
-			headers,
-			status: deconstructedResponse.status,
-		});
+		return await generateResponse(request);
 	};
 }
 

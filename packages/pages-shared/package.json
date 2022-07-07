@@ -1,0 +1,12 @@
+{
+  "name": "pages-shared",
+  "main": "./src/index.ts",
+  "scripts": {
+    "test": "npx vitest"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^3.14.0",
+    "typescript": "^4.7.4",
+    "vitest": "^0.17.0"
+  }
+}
