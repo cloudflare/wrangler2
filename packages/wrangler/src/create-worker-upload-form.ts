@@ -32,6 +32,7 @@ export interface WorkerMetadata {
 	compatibility_flags?: string[];
 	usage_model?: "bundled" | "unbound";
 	migrations?: CfDurableObjectMigrations;
+	capnp_schema?: string;
 	// If you add any new binding types here, also add it to safeBindings
 	// under validateUnsafeBinding in config/validation.ts
 	bindings: (
@@ -51,6 +52,11 @@ export interface WorkerMetadata {
 		| { type: "r2_bucket"; name: string; bucket_name: string }
 		| { type: "service"; name: string; service: string; environment?: string }
 		| { type: "namespace"; name: string; namespace: string }
+		| {
+				type: "logfwdr";
+				name: string;
+				destination: string;
+		  }
 	)[];
 }
 
@@ -122,6 +128,14 @@ export function createWorkerUploadForm(worker: CfWorkerInit): FormData {
 			name: binding,
 			type: "namespace",
 			namespace,
+		});
+	});
+
+	bindings.logfwdr?.bindings.forEach(({ name, destination }) => {
+		metadataBindings.push({
+			name: name,
+			type: "logfwdr",
+			destination,
 		});
 	});
 
@@ -240,6 +254,7 @@ export function createWorkerUploadForm(worker: CfWorkerInit): FormData {
 		...(compatibility_flags && { compatibility_flags }),
 		...(usage_model && { usage_model }),
 		...(migrations && { migrations }),
+		capnp_schema: bindings.logfwdr?.schema,
 	};
 
 	formData.set("metadata", JSON.stringify(metadata));
@@ -255,6 +270,16 @@ export function createWorkerUploadForm(worker: CfWorkerInit): FormData {
 			module.name,
 			new File([module.content], module.name, {
 				type: toMimeType(module.type ?? main.type ?? "esm"),
+			})
+		);
+	}
+
+	if (bindings.logfwdr && bindings.logfwdr.schema) {
+		const filePath = bindings.logfwdr.schema;
+		formData.set(
+			filePath,
+			new File([readFileSync(filePath)], filePath, {
+				type: "application/octet-stream",
 			})
 		);
 	}

@@ -427,6 +427,7 @@ export async function startDev(args: ArgumentsCamelCase<DevArgs>) {
 				worker_namespaces: configParam.worker_namespaces,
 				services: configParam.services,
 				unsafe: configParam.unsafe?.bindings,
+				logfwdr: configParam.logfwdr,
 			};
 		}
 

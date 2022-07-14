@@ -85,6 +85,7 @@ export function printBindings(bindings: CfWorkerInit["bindings"]) {
 		durable_objects,
 		kv_namespaces,
 		r2_buckets,
+		logfwdr,
 		services,
 		text_blobs,
 		unsafe,
@@ -144,6 +145,18 @@ export function printBindings(bindings: CfWorkerInit["bindings"]) {
 				return {
 					key: binding,
 					value: bucket_name,
+				};
+			}),
+		});
+	}
+
+	if (logfwdr !== undefined && logfwdr.bindings.length > 0) {
+		output.push({
+			type: "logfwdr",
+			entries: logfwdr.bindings.map((binding) => {
+				return {
+					key: binding.name,
+					value: binding.destination,
 				};
 			}),
 		});

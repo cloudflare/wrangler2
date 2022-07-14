@@ -127,6 +127,16 @@ interface CfWorkerNamespace {
 	namespace: string;
 }
 
+interface CfLogfwdr {
+	schema: string;
+	bindings: CfLogfwdrBinding[];
+}
+
+interface CfLogfwdrBinding {
+	name: string;
+	destination: string;
+}
+
 interface CfUnsafeBinding {
 	name: string;
 	type: string;
@@ -174,6 +184,7 @@ export interface CfWorkerInit {
 		r2_buckets: CfR2Bucket[] | undefined;
 		services: CfService[] | undefined;
 		worker_namespaces: CfWorkerNamespace[] | undefined;
+		logfwdr: CfLogfwdr | undefined;
 		unsafe: CfUnsafeBinding[] | undefined;
 	};
 	migrations: CfDurableObjectMigrations | undefined;
