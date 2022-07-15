@@ -203,18 +203,19 @@ describe("wrangler", () => {
 			await runWrangler("r2");
 			await endEventLoop();
 			expect(std.out).toMatchInlineSnapshot(`
-			        "wrangler r2
+			"wrangler r2
 
-			        📦 Interact with an R2 store
+			📦 Interact with an R2 store
 
-			        Commands:
-			          wrangler r2 bucket  Manage R2 buckets
+			Commands:
+			  wrangler r2 object  Manage R2 objects
+			  wrangler r2 bucket  Manage R2 buckets
 
-			        Flags:
-			          -c, --config   Path to .toml configuration file  [string]
-			          -h, --help     Show help  [boolean]
-			          -v, --version  Show version number  [boolean]"
-		      `);
+			Flags:
+			  -c, --config   Path to .toml configuration file  [string]
+			  -h, --help     Show help  [boolean]
+			  -v, --version  Show version number  [boolean]"
+		`);
 		});
 	});
 
