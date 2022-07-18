@@ -95,6 +95,7 @@
 		"@esbuild-plugins/node-globals-polyfill": "^0.1.1",
 		"@esbuild-plugins/node-modules-polyfill": "^0.1.4",
 		"blake3-wasm": "^2.1.5",
+		"create-cloudflare": "^1.0.0",
 		"esbuild": "0.14.47",
 		"miniflare": "^2.6.0",
 		"nanoid": "^3.3.3",
