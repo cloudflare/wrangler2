@@ -329,14 +329,16 @@ interface EnvironmentNonInheritable {
 	 * @default `[]`
 	 * @nonInheritable
 	 */
-	services: {
-		/** The binding name used to refer to the bound service. */
-		binding: string;
-		/** The name of the service. */
-		service: string;
-		/** The environment of the service (e.g. production, staging, etc). */
-		environment?: string;
-	}[];
+	services:
+		| {
+				/** The binding name used to refer to the bound service. */
+				binding: string;
+				/** The name of the service. */
+				service: string;
+				/** The environment of the service (e.g. production, staging, etc). */
+				environment?: string;
+		  }[]
+		| undefined;
 
 	/**
 	 * "Unsafe" tables for features that aren't directly supported by wrangler.

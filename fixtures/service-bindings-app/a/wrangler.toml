@@ -1,0 +1,5 @@
+name = 'a'
+
+[[services]]
+binding = "BEE"
+service = 'b'

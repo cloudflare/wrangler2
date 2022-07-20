@@ -7,6 +7,7 @@ import NodeModulesPolyfills from "@esbuild-plugins/node-modules-polyfill";
 import * as esbuild from "esbuild";
 import createModuleCollector from "./module-collection";
 import type { Config } from "./config";
+import type { WorkerRegistry } from "./dev-registry";
 import type { Entry } from "./entry";
 import type { CfModule } from "./worker";
 
@@ -61,6 +62,8 @@ export async function bundleWorker(
 		nodeCompat: boolean | undefined;
 		define: Config["define"];
 		checkFetch: boolean;
+		services: Config["services"];
+		workerDefinitions: WorkerRegistry | undefined;
 	}
 ): Promise<BundleResult> {
 	const {
@@ -73,6 +76,8 @@ export async function bundleWorker(
 		minify,
 		nodeCompat,
 		checkFetch,
+		workerDefinitions,
+		services,
 	} = options;
 	const entryDirectory = path.dirname(entry.file);
 	const moduleCollector = createModuleCollector({
@@ -117,7 +122,11 @@ export async function bundleWorker(
 	// plan on injecting/referencing.
 
 	const result = await esbuild.build({
-		...getEntryPoint(entry.file, serveAssetsFromWorker),
+		...(await getEntryPoint(entry, {
+			serveAssetsFromWorker,
+			workerDefinitions,
+			services,
+		})),
 		bundle: true,
 		absWorkingDir: entry.directory,
 		outdir: destination,
@@ -195,11 +204,18 @@ type EntryPoint = { stdin: esbuild.StdinOptions } | { entryPoints: string[] };
  * actually a shim worker that will either return an asset from a KV store,
  * or delegate to the actual worker.
  */
-function getEntryPoint(
-	entryFile: string,
-	serveAssetsFromWorker: boolean
-): EntryPoint {
+async function getEntryPoint(
+	entry: Entry,
+	options: {
+		serveAssetsFromWorker: boolean;
+		services: Config["services"];
+		workerDefinitions: WorkerRegistry | undefined;
+	}
+): Promise<EntryPoint> {
+	const { serveAssetsFromWorker, services, workerDefinitions } = options;
 	if (serveAssetsFromWorker) {
+		// add a facade around the worker to serve requests
+		// for static assets from the KV store
 		return {
 			stdin: {
 				contents: fs
@@ -208,7 +224,7 @@ function getEntryPoint(
 						"utf8"
 					)
 					// on windows, escape backslashes in the path (`\`)
-					.replace("__ENTRY_POINT__", entryFile.replaceAll("\\", "\\\\"))
+					.replace("__ENTRY_POINT__", entry.file.replaceAll("\\", "\\\\"))
 					.replace(
 						"__KV_ASSET_HANDLER__",
 						path
@@ -216,11 +232,42 @@ function getEntryPoint(
 							.replaceAll("\\", "\\\\")
 					),
 				sourcefile: "static-asset-facade.js",
-				resolveDir: path.dirname(entryFile),
+				resolveDir: path.dirname(entry.file),
+			},
+		};
+	} else if (workerDefinitions && services) {
+		// add a facade around the worker to serve requests to
+		// service bindings from dev instances running locally
+
+		const serviceMap = Object.fromEntries(
+			services.map((serviceBinding) => [
+				serviceBinding.binding,
+				workerDefinitions[serviceBinding.service] || null,
+			])
+		);
+
+		return {
+			stdin: {
+				contents: fs
+					.readFileSync(
+						path.join(
+							__dirname,
+							entry.format === "modules"
+								? "../templates/service-bindings-module-facade.js"
+								: "../templates/service-bindings-sw-facade.js"
+						),
+						"utf8"
+					)
+					// on windows, escape backslashes in the path (`\`)
+					.replace("__ENTRY_POINT__", entry.file.replaceAll("\\", "\\\\"))
+					.replace("__WORKERS__", JSON.stringify(serviceMap)),
+
+				sourcefile: "service-bindings-facade.js",
+				resolveDir: path.dirname(entry.file),
 			},
 		};
 	} else {
-		return { entryPoints: [entryFile] };
+		return { entryPoints: [entry.file] };
 	}
 }
 

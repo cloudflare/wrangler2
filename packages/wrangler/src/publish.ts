@@ -391,6 +391,11 @@ See https://developers.cloudflare.com/workers/platform/compatibility-dates for m
 						nodeCompat,
 						define: config.define,
 						checkFetch: false,
+						services: config.services,
+						// We don't set workerDefinitions here,
+						// because we don't want to apply the dev-time
+						// facades on top of it
+						workerDefinitions: undefined,
 					}
 			  );
 
