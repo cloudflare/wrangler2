@@ -70,11 +70,7 @@ function hasCertificateExpired(keyPath: string, certPath: string): boolean {
 async function generateCertificate() {
 	// `selfsigned` imports `node-forge`, which is a pretty big library.
 	// To reduce startup time, only load this dynamically when needed.
-	// eslint-disable-next-line @typescript-eslint/consistent-type-imports
-	const generate: typeof import("selfsigned").generate = promisify(
-		// eslint-disable-next-line @typescript-eslint/no-var-requires
-		require("selfsigned").generate
-	);
+	const generate = promisify((await import("selfsigned")).generate);
 
 	const certAttrs: Attributes = [{ name: "commonName", value: "localhost" }];
 
