@@ -18,6 +18,7 @@ import React from "react";
 import { fetchResult } from "../cfetch";
 import { FatalError } from "../errors";
 import { logger } from "../logger";
+import { ParseError } from "../parse";
 import {
 	BULK_UPLOAD_CONCURRENCY,
 	MAX_BUCKET_FILE_COUNT,
@@ -287,7 +288,7 @@ export const upload = async (
 						setTimeout(resolvePromise, Math.pow(2, attempts++) * 1000)
 					);
 
-					if ((e as { code: number }).code === 8000013) {
+					if (isJwtExpiredError(e)) {
 						// Looks like the JWT expired, fetch another one
 						jwt = await fetchJwt();
 					}
@@ -298,7 +299,7 @@ export const upload = async (
 			}
 		};
 
-		queue.add(() =>
+		await queue.add(() =>
 			doUpload().then(
 				() => {
 					counter += bucket.files.length;
@@ -379,6 +380,13 @@ export const upload = async (
 		])
 	);
 };
+
+function isJwtExpiredError(error: unknown): boolean {
+	return (
+		error instanceof ParseError &&
+		error?.notes.some((m) => m.text === "Expired JWT")
+	);
+}
 
 function formatTime(duration: number) {
 	return `(${(duration / 1000).toFixed(2)} sec)`;
