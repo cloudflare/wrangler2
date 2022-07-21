@@ -153,7 +153,7 @@
 		"timeago.js": "^4.0.2",
 		"tmp-promise": "^3.0.3",
 		"ts-dedent": "^2.2.0",
-		"undici": "^5.5.1",
+		"undici": "^5.8.0",
 		"update-check": "^1.5.4",
 		"ws": "^8.5.0",
 		"xdg-app-paths": "^7.3.0",
