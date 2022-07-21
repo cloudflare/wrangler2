@@ -105,6 +105,7 @@ export const upload = async (
 		"_worker.js",
 		"_redirects",
 		"_headers",
+		"_routes.json",
 		".DS_Store",
 		"node_modules",
 		".git",

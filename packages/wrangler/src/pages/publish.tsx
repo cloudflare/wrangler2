@@ -290,6 +290,7 @@ export const Handler = async ({
 
 	let _headers: string | undefined,
 		_redirects: string | undefined,
+		_routes: string | undefined,
 		_workerJS: string | undefined;
 
 	try {
@@ -298,6 +299,10 @@ export const Handler = async ({
 
 	try {
 		_redirects = readFileSync(join(directory, "_redirects"), "utf-8");
+	} catch {}
+
+	try {
+		_routes = readFileSync(join(directory, "_routes.json"), "utf-8");
 	} catch {}
 
 	try {
@@ -312,12 +317,15 @@ export const Handler = async ({
 		formData.append("_redirects", new File([_redirects], "_redirects"));
 	}
 
+	if (_routes) {
+		formData.append("_routes.json", new File([_routes], "_routes.json"));
+	}
+
 	if (builtFunctions) {
 		formData.append("_worker.js", new File([builtFunctions], "_worker.js"));
 	} else if (_workerJS) {
 		formData.append("_worker.js", new File([_workerJS], "_worker.js"));
 	}
-
 	const deploymentResponse = await fetchResult<Deployment>(
 		`/accounts/${accountId}/pages/projects/${projectName}/deployments`,
 		{
