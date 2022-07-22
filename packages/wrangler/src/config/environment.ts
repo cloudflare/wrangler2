@@ -218,6 +218,11 @@ interface EnvironmentInheritable {
 	}[];
 
 	/**
+	 *	Designates this worker as an internal-only "first-party" worker.
+	 */
+	first_party_worker: boolean | undefined;
+
+	/**
 	 * TODO: remove this as it has been deprecated.
 	 *
 	 * This is just here for now because the `route` commands use it.
