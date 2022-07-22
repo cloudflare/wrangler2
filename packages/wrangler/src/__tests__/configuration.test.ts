@@ -40,6 +40,10 @@ describe("normalizeAndValidateConfig()", () => {
 			tsconfig: undefined,
 			kv_namespaces: [],
 			legacy_env: true,
+			logfwdr: {
+				bindings: [],
+				schema: "",
+			},
 			send_metrics: undefined,
 			main: undefined,
 			migrations: [],

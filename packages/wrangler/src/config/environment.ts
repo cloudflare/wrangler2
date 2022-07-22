@@ -339,6 +339,27 @@ interface EnvironmentNonInheritable {
 	}[];
 
 	/**
+	 * Specify a compiled capnp schema to use
+	 * Then add a binding per field in the top level message that you will send to logfwdr
+	 *
+	 * NOTE: This field is not automatically inherited from the top level environment,
+	 * and so must be specified in every named environment.
+	 *
+	 * @default `{schema:undefined,bindings:[]}`
+	 * @nonInheritable
+	 */
+	logfwdr: {
+		/** capnp schema filename */
+		schema: string;
+		bindings: {
+			/** The binding name used to refer to logfwdr */
+			name: string;
+			/** The destination for this logged message */
+			destination: string;
+		}[];
+	};
+
+	/**
 	 * "Unsafe" tables for features that aren't directly supported by wrangler.
 	 *
 	 * NOTE: This field is not automatically inherited from the top level environment,

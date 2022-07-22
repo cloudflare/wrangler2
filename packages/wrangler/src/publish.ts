@@ -440,6 +440,7 @@ See https://developers.cloudflare.com/workers/platform/compatibility-dates for m
 			r2_buckets: config.r2_buckets,
 			services: config.services,
 			worker_namespaces: config.worker_namespaces,
+			logfwdr: config.logfwdr,
 			unsafe: config.unsafe?.bindings,
 		};
 

@@ -176,6 +176,7 @@ dist
 wrangler-dist/
 miniflare-dist
 packages/wrangler/wrangler.toml
+packages/wrangler/message.capnp.compiled
 packages/prerelease-registry/_worker.js
 packages/wranglerjs-compat-webpack-plugin/lib
 .wrangler-1-cache

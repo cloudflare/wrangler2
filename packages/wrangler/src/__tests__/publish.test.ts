@@ -4223,6 +4223,19 @@ addEventListener('fetch', event => {});`
 					DATA_BLOB_ONE: "./some-data-blob.bin",
 					DATA_BLOB_TWO: "./more-data-blob.bin",
 				},
+				logfwdr: {
+					schema: "./message.capnp.compiled",
+					bindings: [
+						{
+							name: "httplogs",
+							destination: "httplogs",
+						},
+						{
+							name: "trace",
+							destination: "trace",
+						},
+					],
+				},
 			});
 
 			writeWorkerSource({ type: "sw" });
@@ -4236,6 +4249,8 @@ addEventListener('fetch', event => {});`
 
 			fs.writeFileSync("./some-data-blob.bin", "some data");
 			fs.writeFileSync("./more-data-blob.bin", "more data");
+
+			fs.writeFileSync("./message.capnp.compiled", "compiled capnp messages");
 
 			mockUploadWorkerRequest({
 				expectedType: "sw",
@@ -4278,6 +4293,16 @@ addEventListener('fetch', event => {});`
 						bucket_name: "r2-bucket-two-name",
 						name: "R2_BUCKET_TWO",
 						type: "r2_bucket",
+					},
+					{
+						name: "httplogs",
+						type: "logfwdr",
+						destination: "httplogs",
+					},
+					{
+						name: "trace",
+						type: "logfwdr",
+						destination: "trace",
 					},
 					{
 						name: "WASM_MODULE_ONE",
@@ -4323,6 +4348,9 @@ addEventListener('fetch', event => {});`
 			        - R2 Buckets:
 			          - R2_BUCKET_ONE: r2-bucket-one-name
 			          - R2_BUCKET_TWO: r2-bucket-two-name
+			        - logfwdr:
+			          - httplogs: httplogs
+			          - trace: trace
 			        - Text Blobs:
 			          - TEXT_BLOB_ONE: my-entire-app-depends-on-this.cfg
 			          - TEXT_BLOB_TWO: the-entirety-of-human-knowledge.txt
@@ -5108,6 +5136,58 @@ addEventListener('fetch', event => {});`
 			          "Your worker has access to the following bindings:
 			          - R2 Buckets:
 			            - FOO: foo-bucket
+			          Total Upload: 0xx KiB / gzip: 0xx KiB
+			          Uploaded test-name (TIMINGS)
+			          Published test-name (TIMINGS)
+			            test-name.test-sub-domain.workers.dev"
+		        `);
+				expect(std.err).toMatchInlineSnapshot(`""`);
+				expect(std.warn).toMatchInlineSnapshot(`""`);
+			});
+		});
+
+		describe("[logfwdr]", () => {
+			it("should support logfwdr bindings", async () => {
+				fs.writeFileSync("./message.capnp.compiled", "compiled capnp messages");
+
+				writeWranglerToml({
+					logfwdr: {
+						schema: "./message.capnp.compiled",
+						bindings: [
+							{
+								name: "httplogs",
+								destination: "httplogs",
+							},
+							{
+								name: "trace",
+								destination: "trace",
+							},
+						],
+					},
+				});
+				writeWorkerSource();
+				mockSubDomainRequest();
+				mockUploadWorkerRequest({
+					expectedBindings: [
+						{
+							name: "httplogs",
+							type: "logfwdr",
+							destination: "httplogs",
+						},
+						{
+							name: "trace",
+							type: "logfwdr",
+							destination: "trace",
+						},
+					],
+				});
+
+				await runWrangler("publish index.js");
+				expect(std.out).toMatchInlineSnapshot(`
+			          "Your worker has access to the following bindings:
+			          - logfwdr:
+			            - httplogs: httplogs
+			            - trace: trace
 			          Total Upload: 0xx KiB / gzip: 0xx KiB
 			          Uploaded test-name (TIMINGS)
 			          Published test-name (TIMINGS)

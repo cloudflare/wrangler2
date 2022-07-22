@@ -473,6 +473,7 @@ export async function startDev(args: StartDevOptions) {
 				worker_namespaces: configParam.worker_namespaces,
 				services: configParam.services,
 				unsafe: configParam.unsafe?.bindings,
+				logfwdr: configParam.logfwdr,
 			};
 		}
 
