@@ -1,0 +1,7 @@
+/blog year=:year /blog/:year
+
+/news author=:author year=:year /blog/:year/:author
+
+/sort-params a=1 b=2 /sorted-params
+
+/irrelevant a=1 /relevant

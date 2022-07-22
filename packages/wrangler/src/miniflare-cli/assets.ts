@@ -5,11 +5,11 @@ import { watch } from "chokidar";
 import { getType } from "mime";
 import { Response } from "miniflare";
 import type { Headers as MiniflareHeaders } from "@miniflare/core";
-import type { Log } from "miniflare";
 import type {
-	Request as MiniflareRequest,
+	Log,
 	RequestInfo,
 	RequestInit,
+	Request as MiniflareRequest,
 } from "miniflare";
 
 export interface Options {
@@ -55,14 +55,14 @@ export default async function generateASSETSBinding(options: Options) {
 }
 
 function escapeRegex(str: string) {
-	return str.replace(/[-/\\^$*+?.()|[]{}]/g, "\\$&");
+	return str.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&");
 }
 
 type Replacements = Record<string, string>;
 
 function replacer(str: string, replacements: Replacements) {
 	for (const [replacement, value] of Object.entries(replacements)) {
-		str = str.replace(`:${replacement}`, value);
+		str = str.replaceAll(`:${replacement}`, value);
 	}
 	return str;
 }
@@ -87,9 +87,28 @@ function generateRulesMatcher<T>(
 				rule = rule.split(hostMatch[0]).join(`(?<${hostMatch[1]}>[^/.]+)`);
 			}
 
-			const path_matches = rule.matchAll(/:(\w+)/g);
+			const split = rule.split("?");
+			let pathPart = split[0];
+			const queryParts = split.slice(1);
+
+			const path_matches = pathPart.matchAll(/:(\w+)/g);
 			for (const pathMatch of path_matches) {
-				rule = rule.split(pathMatch[0]).join(`(?<${pathMatch[1]}>[^/]+)`);
+				pathPart = pathPart
+					.split(pathMatch[0])
+					.join(`(?<${pathMatch[1]}>[^/?]+)`);
+			}
+			rule = pathPart;
+
+			let queryPart = "";
+			if (queryParts) {
+				queryPart = queryParts.join("?").split("&").sort().join(".*&");
+				const query_matches = queryPart.matchAll(/:(\w+)/g);
+				for (const queryMatch of query_matches) {
+					queryPart = queryPart
+						.split(queryMatch[0])
+						.join(`(?<${queryMatch[1]}>[^/&]+)`);
+				}
+				rule += "?.*" + queryPart + ".*";
 			}
 
 			rule = "^" + rule + "$";
@@ -105,11 +124,18 @@ function generateRulesMatcher<T>(
 	][];
 
 	return ({ request }: { request: MiniflareRequest }) => {
-		const { pathname, host } = new URL(request.url);
+		const { pathname, host, search } = new URL(request.url);
+		const sortedSearch =
+			search && search.length
+				? "?" + search.slice(1).split("&").sort().join("&")
+				: search;
 
 		return compiledRules
 			.map(([{ crossHost, regExp }, match]) => {
-				const test = crossHost ? `https://${host}${pathname}` : pathname;
+				const test = crossHost
+					? `https://${host}${pathname}${sortedSearch}`
+					: `${pathname}${sortedSearch}`;
+
 				const result = regExp.exec(test);
 				if (result) {
 					return replacerFn(match, result.groups || {});
@@ -188,26 +214,101 @@ function generateHeadersMatcher(headersFile: string) {
 	}
 }
 
-function generateRedirectsMatcher(redirectsFile: string) {
+function generateRedirectsMatcher(redirectsFile: string, logger: Log) {
 	if (existsSync(redirectsFile)) {
 		const contents = readFileSync(redirectsFile).toString();
 
-		// TODO: Log errors
-		const lines = contents
-			.split("\n")
-			.map((line) => line.trim())
-			.filter((line) => !line.startsWith("#") && line !== "");
+		let staticRules = 0,
+			dynamicRules = 0,
+			canCreateStaticRule = true,
+			hasLoggedDynamicLimit = false;
+		const MAX_LINE_LENGTH = 2000,
+			MAX_STATIC_REDIRECT_RULES = 2000,
+			MAX_DYNAMIC_REDIRECT_RULES = 100;
 
 		const rules = Object.fromEntries(
-			lines
-				.map((line) => line.split(" "))
-				.filter((tokens) => tokens.length === 2 || tokens.length === 3)
+			contents
+				.split("\n")
+				.map((line, i) => {
+					line = line.trim();
+					if (line.startsWith("#") || line == "") return [];
+					if (line.length > MAX_LINE_LENGTH) {
+						logger.warn(
+							`Ignoring line ${
+								i + 1
+							} as it exceeds the maximum allowed length of ${MAX_LINE_LENGTH}.`
+						);
+						return [];
+					}
+					const tokens = line.split(" ");
+					if (tokens.length < 2) {
+						logger.warn(
+							`Expected at least 2 whitespace-separated tokens on line ${
+								i + 1
+							}. Got ${tokens.length}.`
+						);
+					}
+					return tokens;
+				})
+				.filter((tokens) => tokens.length >= 2)
 				.map((tokens) => {
-					const from = validateURL(tokens[0], true, false, false);
-					const to = validateURL(tokens[1], false, true, true);
-					let status: number | undefined = parseInt(tokens[2]) || 302;
-					status = [301, 302, 303, 307, 308].includes(status)
-						? status
+					let from = validateURL(tokens[0], true, false, false);
+
+					let status: number | undefined = parseInt(tokens[tokens.length - 1]);
+					let index: number;
+					if (status && !isNaN(status)) {
+						index = tokens.length - 2;
+					} else {
+						index = tokens.length - 1;
+					}
+					const to = validateURL(tokens[index], false, true, true);
+
+					const queryParams = tokens.slice(1, index).filter((param) => {
+						if (param.includes("&")) {
+							logger.warn('Query parameters cannot contain "&".');
+							return false;
+						}
+						return true;
+					});
+
+					if (queryParams.length) {
+						from = `${from}?${queryParams.join("&")}`;
+					}
+
+					if (!from) return undefined;
+
+					if (
+						canCreateStaticRule &&
+						!from.match(/\*/g) &&
+						!from.match(/:\w+/g) &&
+						!from.includes("?")
+					) {
+						staticRules += 1;
+
+						if (staticRules > MAX_STATIC_REDIRECT_RULES) {
+							//set from to undefined to easily filter out the rule at the end
+							from = undefined;
+							logger.warn(
+								`Static rules exceeded maximum of ${MAX_STATIC_REDIRECT_RULES} (currently ${staticRules}). Skipping line.`
+							);
+						}
+					} else {
+						dynamicRules += 1;
+						canCreateStaticRule = false;
+						if (dynamicRules > MAX_DYNAMIC_REDIRECT_RULES) {
+							//set from to undefined to easily filter out the rule at the end
+							from = undefined;
+							if (!hasLoggedDynamicLimit) {
+								hasLoggedDynamicLimit = true;
+								logger.warn(
+									`Dynamic rules exceeded maximum of ${MAX_DYNAMIC_REDIRECT_RULES} (currently ${dynamicRules}). Skipping rest of file.`
+								);
+							}
+						}
+					}
+
+					status = [301, 302, 303, 307, 308].includes(status || 302)
+						? status || 302
 						: undefined;
 
 					return from && to && status ? [from, { to, status }] : undefined;
@@ -309,7 +410,7 @@ async function generateAssetsFetch(
 		}
 	};
 
-	let redirectsMatcher = generateRedirectsMatcher(redirectsFile);
+	let redirectsMatcher = generateRedirectsMatcher(redirectsFile, log);
 	let headersMatcher = generateHeadersMatcher(headersFile);
 
 	watch([headersFile, redirectsFile], {
@@ -323,7 +424,7 @@ async function generateAssetsFetch(
 			}
 			case redirectsFile: {
 				log.log("_redirects modified. Re-evaluating...");
-				redirectsMatcher = generateRedirectsMatcher(redirectsFile);
+				redirectsMatcher = generateRedirectsMatcher(redirectsFile, log);
 				break;
 			}
 		}

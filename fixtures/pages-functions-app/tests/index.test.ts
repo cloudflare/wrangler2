@@ -2,16 +2,16 @@ import { spawn } from "child_process";
 import * as path from "path";
 import { fetch } from "undici";
 import type { ChildProcess } from "child_process";
-import type { Response } from "undici";
+import type { Response, RequestInit } from "undici";
 
-const waitUntilReady = async (url: string): Promise<Response> => {
+const waitUntilReady = async (url: string, init?: RequestInit): Promise<Response> => {
   let response: Response | undefined = undefined;
 
   while (response === undefined) {
     await new Promise((resolvePromise) => setTimeout(resolvePromise, 500));
 
     try {
-      response = await fetch(url);
+      response = await fetch(url, init);
     } catch {}
   }
 
@@ -79,6 +79,39 @@ describe("Pages Functions", () => {
     expect(text).toContain("Hello, world!");
     expect(response.headers.get("x-set-from-functions")).toBe("true");
   });
+
+  it("accepts one query param redirects", async () => {
+    const response = await waitUntilReady("http://localhost:8789/blog?year=2022", {
+      redirect: 'manual',
+    });
+    const location = response.headers.get('location');
+    expect(location).toBe("/blog/2022?year=2022")
+  });
+
+  it("accepts multiple query param redirects", async () => {
+    const response = await waitUntilReady("http://localhost:8789/news?author=Skye&year=2022", {
+      redirect: 'manual',
+    });
+    const location = response.headers.get('location');
+    expect(location).toBe("/blog/2022/Skye?author=Skye&year=2022")
+  });
+
+  it("accepts out of order query params to redirect", async () => {
+    const response = await waitUntilReady("http://localhost:8789/sort-params?b=2&a=1", {
+      redirect: 'manual',
+    });
+    const location = response.headers.get('location');
+    expect(location).toBe("/sorted-params?b=2&a=1")
+  });
+
+  it("ignores irrelevant params", async () => {
+    const response = await waitUntilReady("http://localhost:8789/irrelevant?a=1&b=2", {
+      redirect: 'manual',
+    });
+    const location = response.headers.get('location');
+    expect(location).toBe("/relevant?a=1&b=2")
+  });
+
 
   it("can make SSR responses", async () => {
     const response = await waitUntilReady("http://localhost:8789/date");
