@@ -52,6 +52,7 @@ export async function bundleWorker(
 	destination: string,
 	options: {
 		serveAssetsFromWorker: boolean;
+		assets: Config["assets"];
 		jsxFactory: string | undefined;
 		jsxFragment: string | undefined;
 		rules: Config["rules"];
@@ -73,6 +74,7 @@ export async function bundleWorker(
 		minify,
 		nodeCompat,
 		checkFetch,
+		assets,
 	} = options;
 	const entryDirectory = path.dirname(entry.file);
 	const moduleCollector = createModuleCollector({
@@ -117,7 +119,10 @@ export async function bundleWorker(
 	// plan on injecting/referencing.
 
 	const result = await esbuild.build({
-		...getEntryPoint(entry.file, serveAssetsFromWorker),
+		...getEntryPoint(entry.file, {
+			serveAssetsFromWorker,
+			assets,
+		}),
 		bundle: true,
 		absWorkingDir: entry.directory,
 		outdir: destination,
@@ -197,9 +202,12 @@ type EntryPoint = { stdin: esbuild.StdinOptions } | { entryPoints: string[] };
  */
 function getEntryPoint(
 	entryFile: string,
-	serveAssetsFromWorker: boolean
+	options: {
+		serveAssetsFromWorker: boolean;
+		assets: Config["assets"];
+	}
 ): EntryPoint {
-	if (serveAssetsFromWorker) {
+	if (options.serveAssetsFromWorker) {
 		return {
 			stdin: {
 				contents: fs
@@ -214,6 +222,26 @@ function getEntryPoint(
 						path
 							.join(__dirname, "../kv-asset-handler.js")
 							.replaceAll("\\", "\\\\")
+					)
+					.replace(
+						"__CACHE_CONTROL_OPTIONS__",
+						JSON.stringify(
+							typeof options.assets === "object"
+								? {
+										browserTTL: options.assets.cache_control.browser_TTL,
+										edgeTTL: options.assets.cache_control.edge_TTL,
+										bypassCache: options.assets.cache_control.bypass_cache,
+								  }
+								: {}
+						)
+					)
+					.replace(
+						"__SERVE_SINGLE_PAGE_APP__",
+						`${
+							typeof options.assets === "object"
+								? options.assets.serve_single_page_app
+								: false
+						}`
 					),
 				sourcefile: "static-asset-facade.js",
 				resolveDir: path.dirname(entryFile),

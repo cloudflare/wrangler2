@@ -537,6 +537,7 @@ export async function startDev(args: StartDevOptions) {
 					liveReload={args.liveReload || false}
 					accountId={config.account_id || getAccountFromCache()?.id}
 					assetPaths={assetPaths}
+					assetsConfig={config.assets}
 					port={args.port || config.dev.port || (await getLocalPort())}
 					ip={args.ip || config.dev.ip}
 					inspectorPort={

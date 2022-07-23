@@ -13,6 +13,8 @@ export default {
 		let options = {
 			ASSET_MANIFEST,
 			ASSET_NAMESPACE: env.__STATIC_CONTENT,
+			cacheControl: __CACHE_CONTROL_OPTIONS__,
+			serveSinglePageApp: __SERVE_SINGLE_PAGE_APP__,
 		};
 
 		try {

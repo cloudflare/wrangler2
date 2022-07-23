@@ -128,7 +128,17 @@ export interface ConfigFields<Dev extends RawDevConfig> {
 	 */
 	assets:
 		| string
-		| { bucket: string; include: string[]; exclude: string[] }
+		| {
+				bucket: string;
+				include: string[];
+				exclude: string[];
+				cache_control: {
+					browser_TTL: number | undefined;
+					edge_TTL: number | undefined;
+					bypass_cache: boolean | undefined;
+				};
+				serve_single_page_app: boolean;
+		  }
 		| undefined;
 
 	/**

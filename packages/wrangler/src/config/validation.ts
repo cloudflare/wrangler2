@@ -598,25 +598,105 @@ function normalizeAndValidateAssets(
 	diagnostics: Diagnostics,
 	configPath: string | undefined,
 	rawConfig: RawConfig
-) {
-	if (
-		typeof rawConfig?.assets === "string" ||
-		rawConfig?.assets === undefined
-	) {
-		return rawConfig?.assets;
+): Config["assets"] {
+	if (typeof rawConfig?.assets === "string") {
+		return {
+			bucket: rawConfig.assets,
+			include: [],
+			exclude: [],
+			cache_control: {
+				browser_TTL: undefined,
+				edge_TTL: undefined,
+				bypass_cache: undefined,
+			},
+			serve_single_page_app: false,
+		};
 	}
 
-	const { bucket, include = [], exclude = [], ...rest } = rawConfig.assets;
+	if (rawConfig?.assets === undefined) {
+		return undefined;
+	}
+
+	if (typeof rawConfig.assets !== "object") {
+		diagnostics.errors.push(
+			`Expected the \`assets\` field to be a string or an object, but got ${typeof rawConfig.assets}.`
+		);
+		return undefined;
+	}
+
+	const {
+		bucket,
+		include = [],
+		exclude = [],
+		cache_control,
+		serve_single_page_app,
+		...rest
+	} = rawConfig.assets;
+
+	const { browser_TTL, edge_TTL, bypass_cache, ...cacheRest } =
+		cache_control || {};
 
 	validateAdditionalProperties(diagnostics, "assets", Object.keys(rest), []);
+	validateAdditionalProperties(
+		diagnostics,
+		"assets.cache_control",
+		Object.keys(cacheRest),
+		[]
+	);
 	validateRequiredProperty(diagnostics, "assets", "bucket", bucket, "string");
 	validateTypedArray(diagnostics, "assets.include", include, "string");
 	validateTypedArray(diagnostics, "assets.exclude", exclude, "string");
+
+	validateOptionalProperty(
+		diagnostics,
+		"assets",
+		"cache_control",
+		cache_control,
+		"object"
+	);
+
+	validateOptionalProperty(
+		diagnostics,
+		"assets.cache_control",
+		"browser_TTL",
+		browser_TTL,
+		"number"
+	);
+
+	validateOptionalProperty(
+		diagnostics,
+		"assets.cache_control",
+		"edge_TTL",
+		edge_TTL,
+		"number"
+	);
+
+	validateOptionalProperty(
+		diagnostics,
+		"assets.cache_control",
+		"bypass_cache",
+		bypass_cache,
+		"boolean"
+	);
+
+	validateOptionalProperty(
+		diagnostics,
+		"assets",
+		"serve_single_page_app",
+		serve_single_page_app,
+		"boolean"
+	);
 
 	return {
 		bucket,
 		include,
 		exclude,
+		cache_control: {
+			browser_TTL,
+			edge_TTL,
+			bypass_cache,
+		},
+		serve_single_page_app,
 	};
 }
 
