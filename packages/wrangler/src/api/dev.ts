@@ -32,7 +32,12 @@ interface DevOptions {
 		script_name?: string | undefined;
 		environment?: string | undefined;
 	}[];
-	d1Databases?: string[];
+	d1?: {
+		binding: string;
+		database_name?: string;
+		database_id?: string;
+		preview_database_id?: string;
+	}[];
 	showInteractiveDevSession?: boolean;
 	logLevel?: "none" | "error" | "log" | "warn" | "debug";
 	logPrefix?: string;

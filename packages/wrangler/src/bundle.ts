@@ -217,7 +217,7 @@ function getEntryPoint(
 						"utf8"
 					)
 					// on windows, escape backslashes in the path (`\`)
-					.replace("__ENTRY_POINT__", entryFile.replaceAll("\\", "\\\\"))
+					.replaceAll("__ENTRY_POINT__", entryFile.replaceAll("\\", "\\\\"))
 					.replace(
 						"__KV_ASSET_HANDLER__",
 						path

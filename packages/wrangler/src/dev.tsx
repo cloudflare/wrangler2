@@ -277,6 +277,12 @@ type StartDevOptions = ArgumentsCamelCase<DevArgs> & {
 		script_name?: string | undefined;
 		environment?: string | undefined;
 	}[];
+	d1?: {
+		binding: string;
+		database_name?: string;
+		database_id?: string;
+		preview_database_id?: string;
+	}[];
 	forceLocal?: boolean;
 	enablePagesAssetsServiceBinding?: EnablePagesAssetsServiceBindingOptions;
 };
@@ -470,7 +476,15 @@ export async function startDev(args: StartDevOptions) {
 						};
 					}
 				),
-				d1_databases: identifyD1BindingsAsBeta(configParam.d1_databases),
+				d1_databases: identifyD1BindingsAsBeta([
+					...(configParam.d1_databases || []),
+					...((args.d1 || []) as {
+						binding: string;
+						database_name: string;
+						database_id: string;
+						preview_database_id: string;
+					}[]),
+				]),
 				worker_namespaces: configParam.worker_namespaces,
 				services: configParam.services,
 				unsafe: configParam.unsafe?.bindings,
@@ -533,7 +547,7 @@ export async function startDev(args: StartDevOptions) {
 					localProtocol={args.localProtocol || config.dev.local_protocol}
 					localUpstream={args["local-upstream"] || host}
 					enableLocalPersistence={
-						args["experimental-enable-local-persistence"] || false
+						args.experimentalEnableLocalPersistence || false
 					}
 					liveReload={args.liveReload || false}
 					accountId={config.account_id || getAccountFromCache()?.id}

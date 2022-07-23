@@ -1,34 +1,34 @@
 {
-  "name": "pages-functions-app",
-  "version": "0.0.0",
-  "private": true,
-  "scripts": {
-    "dev": "npx wrangler pages dev public  --binding=NAME=VALUE --binding=OTHER_NAME=THING=WITH=EQUALS  --port 8789",
-    "test": "npx jest --forceExit"
-  },
-  "devDependencies": {
-    "@cloudflare/workers-types": "^3.2.0",
-    "undici": "^4.15.1"
-  },
-  "engines": {
-    "node": ">=14"
-  },
-  "sideEffects": false,
-  "main": "dist/worker.js",
-  "jest": {
-    "restoreMocks": true,
-    "testTimeout": 30000,
-    "testRegex": ".*.(test|spec)\\.[jt]sx?$",
-    "transformIgnorePatterns": [
-      "node_modules/(?!find-up|locate-path|p-locate|p-limit|yocto-queue|path-exists|execa|strip-final-newline|npm-run-path|path-key|onetime|mimic-fn|human-signals|is-stream)"
-    ],
-    "transform": {
-      "^.+\\.c?(t|j)sx?$": [
-        "esbuild-jest",
-        {
-          "sourcemap": true
-        }
-      ]
-    }
-  }
+	"name": "pages-functions-app",
+	"version": "0.0.0",
+	"private": true,
+	"sideEffects": false,
+	"main": "dist/worker.js",
+	"scripts": {
+		"dev": "npx wrangler pages dev public  --binding=NAME=VALUE --binding=OTHER_NAME=THING=WITH=EQUALS --d1 D1 --port 8789",
+		"test": "npx jest --forceExit"
+	},
+	"jest": {
+		"restoreMocks": true,
+		"testRegex": ".*.(test|spec)\\.[jt]sx?$",
+		"testTimeout": 30000,
+		"transform": {
+			"^.+\\.c?(t|j)sx?$": [
+				"esbuild-jest",
+				{
+					"sourcemap": true
+				}
+			]
+		},
+		"transformIgnorePatterns": [
+			"node_modules/(?!find-up|locate-path|p-locate|p-limit|yocto-queue|path-exists|execa|strip-final-newline|npm-run-path|path-key|onetime|mimic-fn|human-signals|is-stream)"
+		]
+	},
+	"devDependencies": {
+		"@cloudflare/workers-types": "^3.2.0",
+		"undici": "^4.15.1"
+	},
+	"engines": {
+		"node": ">=14"
+	}
 }
