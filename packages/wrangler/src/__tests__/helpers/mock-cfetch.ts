@@ -1,5 +1,6 @@
 import { URL, URLSearchParams } from "node:url";
 import { pathToRegexp } from "path-to-regexp";
+import { Response } from "undici";
 import { getCloudflareApiBaseUrl } from "../../cfetch";
 import type { FetchResult, FetchError } from "../../cfetch";
 import type { RequestInit } from "undici";
@@ -180,6 +181,7 @@ export function unsetAllMocks() {
  */
 
 const kvGetMocks = new Map<string, string | Buffer>();
+const r2GetMocks = new Map<string, string>();
 
 /**
  * @mocked typeof fetchKVGetValue
@@ -206,6 +208,35 @@ export function setMockFetchKVGetValue(
 	kvGetMocks.set(`${accountId}/${namespaceId}/${key}`, value);
 }
 
+/**
+ * @mocked typeof fetchR2Objects
+ */
+export function mockFetchR2Objects(resource: string) {
+	if (r2GetMocks.has(resource)) {
+		const value = r2GetMocks.get(resource);
+		if (value !== undefined) return new Response(value);
+	}
+	throw new Error(`no mock value found for \`r2 object get\` - ${resource}`);
+}
+
+/**
+ * Mock setter for usage within test blocks, companion helper to `mockFetchR2Objects`
+ */
+export function setMockFetchR2Objects(
+	{
+		accountId = "r2-object-test-account",
+		bucketName = "r2-test-bucket",
+		objectName = "r2-test-object",
+	},
+	value: string
+) {
+	r2GetMocks.set(
+		`/accounts/${accountId}/r2/buckets/${bucketName}/objects/${objectName}`,
+		value
+	);
+}
+
 export function unsetMockFetchKVGetValues() {
 	kvGetMocks.clear();
+	r2GetMocks.clear();
 }

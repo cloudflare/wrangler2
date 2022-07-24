@@ -6,7 +6,7 @@ import { ParseError, parseJSON } from "../parse";
 import { loginOrRefreshIfRequired, requireApiToken } from "../user";
 import type { ApiCredentials } from "../user";
 import type { URLSearchParams } from "node:url";
-import type { RequestInit, HeadersInit } from "undici";
+import type { RequestInit, HeadersInit, Response } from "undici";
 
 /**
  * Get the URL to use to access the Cloudflare API.
@@ -124,7 +124,6 @@ function addUserAgent(headers: Record<string, string>): void {
  * Note: any calls to fetchKVGetValue must call encodeURIComponent on key
  * before passing it
  */
-
 export async function fetchKVGetValue(
 	accountId: string,
 	namespaceId: string,
@@ -141,6 +140,39 @@ export async function fetchKVGetValue(
 	});
 	if (response.ok) {
 		return await response.arrayBuffer();
+	} else {
+		throw new Error(
+			`Failed to fetch ${resource} - ${response.status}: ${response.statusText});`
+		);
+	}
+}
+
+/**
+ * The implementation for fetching a R2 object from Cloudflare API.
+ * We have a special implementation to handle the non-standard API response
+ * that doesn't return JSON, likely due to the streaming nature.
+ *
+ * note: The implementation should be called from light wrappers for
+ * different methods (GET, PUT)
+ */
+type ResponseWithBody = Response & { body: NonNullable<Response["body"]> };
+export async function fetchR2Objects(
+	resource: string,
+	bodyInit: RequestInit = {}
+): Promise<ResponseWithBody> {
+	await requireLoggedIn();
+	const auth = requireApiToken();
+	const headers = cloneHeaders(bodyInit.headers);
+	addAuthorizationHeaderIfUnspecified(headers, auth);
+	addUserAgent(headers);
+
+	const response = await fetch(`${getCloudflareAPIBaseURL()}${resource}`, {
+		...bodyInit,
+		headers,
+	});
+
+	if (response.ok && response.body) {
+		return response as ResponseWithBody;
 	} else {
 		throw new Error(
 			`Failed to fetch ${resource} - ${response.status}: ${response.statusText});`
