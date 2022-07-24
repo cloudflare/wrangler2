@@ -1082,6 +1082,14 @@ function normalizeAndValidateEnvironment(
 			isBoolean,
 			undefined
 		),
+		first_party_worker: inheritable(
+			diagnostics,
+			topLevelEnv,
+			rawEnv,
+			"first_party_worker",
+			isBoolean,
+			undefined
+		),
 	};
 
 	return environment;

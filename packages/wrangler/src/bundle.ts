@@ -62,6 +62,7 @@ export async function bundleWorker(
 		nodeCompat: boolean | undefined;
 		define: Config["define"];
 		checkFetch: boolean;
+		firstPartyWorkerDevFacade: boolean | undefined;
 	}
 ): Promise<BundleResult> {
 	const {
@@ -74,6 +75,7 @@ export async function bundleWorker(
 		minify,
 		nodeCompat,
 		checkFetch,
+		firstPartyWorkerDevFacade,
 	} = options;
 	const entryDirectory = path.dirname(entry.file);
 	const moduleCollector = createModuleCollector({
@@ -119,7 +121,10 @@ export async function bundleWorker(
 	// plan on injecting/referencing.
 
 	const result = await esbuild.build({
-		...getEntryPoint(entry.file, serveAssetsFromWorker),
+		...getEntryPoint(entry.file, {
+			serveAssetsFromWorker,
+			firstPartyWorkerDevFacade,
+		}),
 		bundle: true,
 		absWorkingDir: entry.directory,
 		outdir: destination,
@@ -199,9 +204,12 @@ type EntryPoint = { stdin: esbuild.StdinOptions } | { entryPoints: string[] };
  */
 function getEntryPoint(
 	entryFile: string,
-	serveAssetsFromWorker: boolean
+	options: {
+		serveAssetsFromWorker: boolean;
+		firstPartyWorkerDevFacade: boolean | undefined;
+	}
 ): EntryPoint {
-	if (serveAssetsFromWorker) {
+	if (options.serveAssetsFromWorker) {
 		return {
 			stdin: {
 				contents: fs
@@ -219,6 +227,24 @@ function getEntryPoint(
 					),
 				sourcefile: "static-asset-facade.js",
 				resolveDir: path.dirname(entryFile),
+			},
+		};
+	} else if (options.firstPartyWorkerDevFacade) {
+		return {
+			stdin: {
+				contents: fs
+					.readFileSync(
+						path.join(
+							__dirname,
+							"../templates/first-party-worker-module-facade.ts"
+						),
+						"utf8"
+					)
+					// on windows, escape backslashes in the path (`\`)
+					.replace("__ENTRY_POINT__", entryFile.replaceAll("\\", "\\\\")),
+				sourcefile: "first-party-worker-module-facade.ts",
+				resolveDir: path.dirname(entryFile),
+				loader: "ts",
 			},
 		};
 	} else {

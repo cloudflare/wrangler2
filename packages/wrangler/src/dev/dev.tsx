@@ -64,6 +64,7 @@ export type DevProps = {
 	showInteractiveDevSession: boolean | undefined;
 	forceLocal: boolean | undefined;
 	enablePagesAssetsServiceBinding?: EnablePagesAssetsServiceBindingOptions;
+	firstPartyWorker: boolean | undefined;
 };
 
 export function DevImplementation(props: DevProps): JSX.Element {
@@ -92,6 +93,12 @@ export function DevImplementation(props: DevProps): JSX.Element {
 	if (props.bindings.data_blobs && props.entry.format === "modules") {
 		throw new Error(
 			"You cannot configure [data_blobs] with an ES module worker. Instead, import the file directly in your code, and optionally configure `[rules]` in your wrangler.toml"
+		);
+	}
+
+	if (props.firstPartyWorker && props.entry.format === "service-worker") {
+		throw new Error(
+			"You cannot use the first-party worker format with a worker in the service-worker format. "
 		);
 	}
 
@@ -171,6 +178,7 @@ function DevSession(props: DevSessionProps) {
 		nodeCompat: props.nodeCompat,
 		define: props.define,
 		noBundle: props.noBundle,
+		firstPartyWorkerDevFacade: props.firstPartyWorker,
 	});
 
 	return props.local ? (

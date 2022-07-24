@@ -29,6 +29,7 @@ export function useEsbuild({
 	nodeCompat,
 	define,
 	noBundle,
+	firstPartyWorkerDevFacade,
 }: {
 	entry: Entry;
 	destination: string | undefined;
@@ -41,6 +42,7 @@ export function useEsbuild({
 	minify: boolean | undefined;
 	nodeCompat: boolean | undefined;
 	noBundle: boolean;
+	firstPartyWorkerDevFacade: boolean | undefined;
 }): EsbuildBundle | undefined {
 	const [bundle, setBundle] = useState<EsbuildBundle>();
 	const { exit } = useApp();
@@ -94,6 +96,7 @@ export function useEsbuild({
 						nodeCompat,
 						define,
 						checkFetch: true,
+						firstPartyWorkerDevFacade,
 				  });
 
 			// Capture the `stop()` method to use as the `useEffect()` destructor.
@@ -145,6 +148,7 @@ export function useEsbuild({
 		minify,
 		nodeCompat,
 		define,
+		firstPartyWorkerDevFacade,
 	]);
 	return bundle;
 }
