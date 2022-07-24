@@ -1,5 +1,74 @@
 # wrangler
 
+## 2.0.23
+
+### Patch Changes
+
+- [#1500](https://github.com/cloudflare/wrangler2/pull/1500) [`0826f833`](https://github.com/cloudflare/wrangler2/commit/0826f8333f4079191594fb81cae28e2a4cc5b6f2) Thanks [@cameron-robey](https://github.com/cameron-robey)! - fix: warn when using `--no-bundle` with `--minify` or `--node-compat`
+
+  Fixes https://github.com/cloudflare/wrangler2/issues/1491
+
+* [#1523](https://github.com/cloudflare/wrangler2/pull/1523) [`e1e2ee5c`](https://github.com/cloudflare/wrangler2/commit/e1e2ee5c6fbeb37eb098bce4e6b0c28dd146c022) Thanks [@threepointone](https://github.com/threepointone)! - fix: don't log version spam in tests
+
+  Currently in tests, we see a bunch of logspam from yargs about "version" being a reserved word, this patch removes that spam.
+
+- [#1498](https://github.com/cloudflare/wrangler2/pull/1498) [`fe3fbd95`](https://github.com/cloudflare/wrangler2/commit/fe3fbd952d191fde9ebda53b9b4b3fcf2ab9bee0) Thanks [@cameron-robey](https://github.com/cameron-robey)! - feat: change version command to give update information
+  When running version command, we want to display update information if current version is not up to date. Achieved by replacing default output with the wrangler banner.
+  Previous behaviour (just outputting current version) reamins when !isTTY.
+  Version command changed from inbuilt .version() from yargs, to a regular command to allow for asynchronous behaviour.
+
+  Implements https://github.com/cloudflare/wrangler2/issues/1492
+
+* [#1431](https://github.com/cloudflare/wrangler2/pull/1431) [`a2e3a6b7`](https://github.com/cloudflare/wrangler2/commit/a2e3a6b7f7451f9df9718f75e4c03a9e379d6a42) Thanks [@Skye-31](https://github.com/Skye-31)! - chore: Refactor `wrangler pages dev` to use Wrangler-proper's own dev server.
+
+  This:
+
+  - fixes some bugs (e.g. not proxying WebSockets correctly),
+  - presents a much nicer UI (with the slick keybinding controls),
+  - adds features that `pages dev` was missing (e.g. `--local-protocol`),
+  - and reduces the maintenance burden of `wrangler pages dev` going forward.
+
+- [#1528](https://github.com/cloudflare/wrangler2/pull/1528) [`60bdc31a`](https://github.com/cloudflare/wrangler2/commit/60bdc31a6fbeb66a5112202c400301439a999f76) Thanks [@threepointone](https://github.com/threepointone)! - fix: prevent local mode restart
+
+  In dev, we inject a patch for `fetch()` to detect bad usages. This patch is copied into the destination directory before it's used. esbuild appears to have a bug where it thinks a dependency has changed so it restarts once in local mode. The fix here is to copy the file to inject into a separate temporary dir.
+
+  Fixes https://github.com/cloudflare/wrangler2/issues/1515
+
+* [#1502](https://github.com/cloudflare/wrangler2/pull/1502) [`be4ffde5`](https://github.com/cloudflare/wrangler2/commit/be4ffde5f92e9631e38e8696b4d573906094c05a) Thanks [@threepointone](https://github.com/threepointone)! - polish: recommend using an account id when user details aren't available.
+
+  When using an api token, sometimes the call to get a user's membership details fails with a 9109 error. In this scenario, a workaround to skip the membership check is to provide an account_id in wrangler.toml or via CLOUDFLARE_ACCOUNT_ID. This bit of polish adds this helpful tip into the error message.
+
+- [#1499](https://github.com/cloudflare/wrangler2/pull/1499) [`7098b1ee`](https://github.com/cloudflare/wrangler2/commit/7098b1ee9b26a1a8e70bab2988559f9313d7b89c) Thanks [@cameron-robey](https://github.com/cameron-robey)! - fix: no feedback on `wrangler kv:namespace delete`
+
+* [#1479](https://github.com/cloudflare/wrangler2/pull/1479) [`862f14e5`](https://github.com/cloudflare/wrangler2/commit/862f14e570546b601795f617d2cdb9d8d4c65740) Thanks [@threepointone](https://github.com/threepointone)! - fix: read `process.env.NODE_ENV` correctly when building worker
+
+  We replace `process.env.NODE_ENV` in workers with the value of the environment variable. However, we have a bug where when we make an actual build of wrangler (which has NODE_ENV set as "production"), we were also replacing the expression where we'd replace it in a worker. The result was that all workers would have `process.env.NODE_ENV` set to production, no matter what the user had set. The fix here is to use a "dynamic" value for the expression so that our build system doesn't replace it.
+
+  Fixes https://github.com/cloudflare/wrangler2/issues/1477
+
+- [#1471](https://github.com/cloudflare/wrangler2/pull/1471) [`0953af8e`](https://github.com/cloudflare/wrangler2/commit/0953af8e42f0eca599306bd02a263dc30196781d) Thanks [@JacobMGEvans](https://github.com/JacobMGEvans)! - ci: implement CodeCov Integration
+  CodeCov is used for analyzing code and tests to improve stability and maintainability. It does this by utilizing static code analysis
+  and testing output to provide insights into things that need improving, security concerns, missing test coverage of critical code, and more,
+  which can be missed even after exhaustive human review.
+
+* [#1516](https://github.com/cloudflare/wrangler2/pull/1516) [`e178d6fb`](https://github.com/cloudflare/wrangler2/commit/e178d6fbceab858fbc9a8462d455b6661368f472) Thanks [@threepointone](https://github.com/threepointone)! - polish: don't log an error message if wrangler dev startup is interrupted.
+
+  When we quit wrangler dev, any inflight requests are cancelled. Any error handlers for those requests are ignored if the request was cancelled purposely. The check for this was missing for the prewarm request for a dev session, and this patch adds it so it dorsn't get logged to the terminal.
+
+- [#1496](https://github.com/cloudflare/wrangler2/pull/1496) [`8eb91142`](https://github.com/cloudflare/wrangler2/commit/8eb911426194dbdd8a579a19baa8e806f7b8e571) Thanks [@threepointone](https://github.com/threepointone)! - fix: add `fetch()` dev helper correctly for pnp style package managers
+
+  In https://github.com/cloudflare/wrangler2/pull/992, we added a dev-only helper that would warn when using `fetch()` in a manner that wouldn't work as expected (because of a bug we currently have in the runtime). We did this by injecting a file that would override usages of `fetch()`. When using pnp style package managers like yarn, this file can't be resolved correctly. So to fix that, we extract it into the temporary destination directory that we use to build the worker (much like a similar fix we did in https://github.com/cloudflare/wrangler2/pull/1154)
+
+  Reported at https://github.com/cloudflare/wrangler2/issues/1320#issuecomment-1188804668
+
+* [#1529](https://github.com/cloudflare/wrangler2/pull/1529) [`1a0ac8d0`](https://github.com/cloudflare/wrangler2/commit/1a0ac8d01c1b351eb7bb8e051ca12472e177f516) Thanks [@GregBrimble](https://github.com/GregBrimble)! - feat: Adds the `--experimental-enable-local-persistence` option to `wrangler pages dev`
+
+  Previously, this was implicitly enabled and stored things in a `.mf` directory. Now we move to be in line with what `wrangler dev` does, defaults disabled, and stores in a `wrangler-local-state` directory.
+
+- [#1514](https://github.com/cloudflare/wrangler2/pull/1514) [`9271680d`](https://github.com/cloudflare/wrangler2/commit/9271680dc98e6f0363f6d3576c99b5382e35cf86) Thanks [@threepointone](https://github.com/threepointone)! - feat: add `config.inspector_port`
+
+  This adds a configuration option for the inspector port used by the debugger in `wrangler dev`. This also includes a bug fix where we weren't passing on this configuration to local mode.
+
 ## 2.0.22
 
 ### Patch Changes
