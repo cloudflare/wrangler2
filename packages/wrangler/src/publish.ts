@@ -51,6 +51,27 @@ type Props = {
 
 type RouteObject = ZoneIdRoute | ZoneNameRoute | CustomDomainRoute;
 
+export type CustomDomain = {
+	id: string;
+	zone_id: string;
+	zone_name: string;
+	hostname: string;
+	service: string;
+	environment: string;
+};
+type UpdatedCustomDomain = CustomDomain & { modified: boolean };
+type ConflictingCustomDomain = CustomDomain & {
+	external_dns_record_id?: string;
+	external_cert_id?: string;
+};
+
+export type CustomDomainChangeset = {
+	added: CustomDomain[];
+	removed: CustomDomain[];
+	updated: UpdatedCustomDomain[];
+	conflicting: ConflictingCustomDomain[];
+};
+
 function sleep(ms: number) {
 	return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -79,58 +100,27 @@ function renderRoute(route: Route): string {
 	return result;
 }
 
-// this function takes a string with quotes in it
-// (i.e. `hello "world", if that really is your name`)
-// and peels out the first instance of a substring
-// bounded by quotes (so, in the example above, `world`)
-//
-// this is useful because the /domains api will return
-// which domains conflicted in an error message, bounded
-// by a string, which we can use to provide helpful
-// messages to a user
-function getQuoteBoundedSubstring(content: string) {
-	const matches = content.split('"');
-	return matches[1] ?? "";
-}
-
-function isOriginConflictError(
-	e: unknown
-): e is { code: 100116; message: string; notes: Array<{ text: string }> } {
-	return (
-		typeof e === "object" &&
-		e !== null &&
-		(e as { code: number }).code === 100116
-	);
-}
-
-function isDNSConflictError(
-	e: unknown
-): e is { code: 100117; message: string; notes: Array<{ text: string }> } {
-	return (
-		typeof e === "object" &&
-		e !== null &&
-		(e as { code: number }).code === 100117
-	);
-}
-
-// empty error class to throw and then explicitly catch via `instanceof`
-class CustomDomainOverrideRejected extends Error {}
-
 // publishing to custom domains involves a few more steps than just updating
 // the routing table, and thus the api implementing it is fairly defensive -
 // it will error eagerly on conflicts against existing domains or existing
 // managed DNS records
-//
-// however, you can pass params to override the errors. we start on the
-// defensive path, and if one of these errors occur, we prompt the user
-// for confirmation that they do indeed want to override the conflicts, and
-// then retry the request with the right override added
+
+// however, you can pass params to override the errors. to know if we should
+// override the current state, we generate a "changeset" of required actions
+// to get to the state we want (specified by the list of custom domains). the
+// changeset returns an "updated" collection (existing custom domains
+// connected to other scripts) and a "conflicting" collection (the requested
+// custom domains that have a managed, conflicting DNS record preventing the
+// host's use as a custom domain). with this information, we can prompt to
+// the user what will occur if we create the custom domains requested, and
+// add the override param if they confirm the action
 //
 // if a user does not confirm that they want to override, we skip publishing
 // to these custom domains, but continue on through the rest of the
 // publish stage
-function publishCustomDomains(
+async function publishCustomDomains(
 	workerUrl: string,
+	accountId: string,
 	domains: Array<RouteObject>
 ): Promise<string[]> {
 	const config = {
@@ -146,79 +136,81 @@ function publishCustomDomains(
 		};
 	});
 
+	const fail = () => {
+		return [
+			domains.length > 1
+				? `Publishing to ${domains.length} Custom Domains was skipped, fix conflicts and try again`
+				: `Publishing to Custom Domain "${domains[0].pattern}" was skipped, fix conflict and try again`,
+		];
+	};
+
 	if (!process.stdout.isTTY) {
 		// running in non-interactive mode.
 		// existing origins / dns records are not indicative of errors,
 		// so we aggressively update rather than aggressively fail
 		config.override_existing_origin = true;
 		config.override_existing_dns_record = true;
+	} else {
+		// get a changeset for operations required to achieve a state with the requested domains
+		const changeset = await fetchResult<CustomDomainChangeset>(
+			`${workerUrl}/domains/changeset?replace_state=true`,
+			{
+				method: "POST",
+				body: JSON.stringify(origins),
+				headers: {
+					"Content-Type": "application/json",
+				},
+			}
+		);
+
+		const updatesRequired = changeset.updated.filter(
+			(domain) => domain.modified
+		);
+		if (updatesRequired.length > 0) {
+			// find out which scripts the conflict domains are already attached to
+			// so we can provide that in the confirmation prompt
+			const existing = await Promise.all(
+				updatesRequired.map((domain) =>
+					fetchResult<CustomDomain>(
+						`/accounts/${accountId}/workers/domains/records/${domain.id}`
+					)
+				)
+			);
+			const existingRendered = existing
+				.map(
+					(domain) =>
+						`\t• ${domain.hostname} (used as a domain for "${domain.service}")`
+				)
+				.join("\n");
+			const message = `Custom Domains already exist for these domains:
+${existingRendered}
+Update them to point to this script instead?`;
+			if (!(await confirm(message))) return fail();
+			config.override_existing_origin = true;
+		}
+
+		if (changeset.conflicting.length > 0) {
+			const conflicitingRendered = changeset.conflicting
+				.map((domain) => `\t• ${domain.hostname}`)
+				.join("\n");
+			const message = `You already have DNS records that conflict for these Custom Domains:
+${conflicitingRendered}
+Update them to point to this script instead?`;
+			if (!(await confirm(message))) return fail();
+			config.override_existing_dns_record = true;
+		}
 	}
 
-	// Mixing promise chains with async/await is funky, but it allows us to keep related
-	// logic synchronous-looking (i.e. prompting for confirmation and then re-requesting)
-	// while retaining the flexibility of promise chain fall-throughs. We can group error
-	// handling logic in dedicated catch calls, and all we have to do is re-throw an
-	// error and it will pass down to the next catch call
-	return fetchResult(`${workerUrl}/domains`, {
+	// publish to domains
+	await fetchResult(`${workerUrl}/domains/records`, {
 		method: "PUT",
 		body: JSON.stringify({ ...config, origins }),
 		headers: {
 			"Content-Type": "application/json",
 		},
-	})
-		.catch(async (err) => {
-			if (isOriginConflictError(err)) {
-				const conflictingOrigins = getQuoteBoundedSubstring(err.notes[0].text);
-				const shouldContinue = await confirm(
-					`Custom Domains already exist for these domains: "${conflictingOrigins}"\nUpdate them to point to this script instead?`
-				);
-				if (!shouldContinue) {
-					throw new CustomDomainOverrideRejected();
-				}
-				config.override_existing_origin = true;
-				await fetchResult(`${workerUrl}/domains`, {
-					method: "PUT",
-					body: JSON.stringify({ ...config, origins }),
-					headers: {
-						"Content-Type": "application/json",
-					},
-				});
-			} else {
-				throw err;
-			}
-		})
-		.catch(async (err) => {
-			if (isDNSConflictError(err)) {
-				const conflictingOrigins = getQuoteBoundedSubstring(err.notes[0].text);
-				const shouldContinue = await confirm(
-					`You already have conflicting DNS records for these domains: "${conflictingOrigins}"\nUpdate them to point to this script instead?`
-				);
-				if (!shouldContinue) {
-					throw new CustomDomainOverrideRejected();
-				}
-				config.override_existing_dns_record = true;
-				await fetchResult(`${workerUrl}/domains`, {
-					method: "PUT",
-					body: JSON.stringify({ ...config, origins }),
-					headers: {
-						"Content-Type": "application/json",
-					},
-				});
-			} else {
-				throw err;
-			}
-		})
-		.then(() => domains.map((domain) => renderRoute(domain)))
-		.catch((err) => {
-			if (err instanceof CustomDomainOverrideRejected) {
-				return [
-					domains.length > 1
-						? `Publishing to ${domains.length} Custom Domains was skipped, fix conflicts and try again`
-						: `Publishing to Custom Domain "${domains[0].pattern}" was skipped, fix conflict and try again`,
-				];
-			}
-			throw err;
-		});
+	});
+
+	return domains.map((domain) => renderRoute(domain));
 }
 
 export default async function publish(props: Props): Promise<void> {
@@ -590,7 +582,9 @@ See https://developers.cloudflare.com/workers/platform/compatibility-dates for m
 
 	// Update custom domains for the script
 	if (customDomainsOnly.length > 0) {
-		deployments.push(publishCustomDomains(workerUrl, customDomainsOnly));
+		deployments.push(
+			publishCustomDomains(workerUrl, accountId, customDomainsOnly)
+		);
 	}
 
 	// Configure any schedules for the script.
