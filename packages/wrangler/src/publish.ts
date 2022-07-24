@@ -238,7 +238,7 @@ export default async function publish(props: Props): Promise<void> {
 See https://developers.cloudflare.com/workers/platform/compatibility-dates for more information.`);
 	}
 
-	const triggers = props.triggers || config.triggers?.crons;
+	const triggers = (props.triggers || config.triggers?.crons) ?? [];
 	const routes =
 		props.routes ?? config.routes ?? (config.route ? [config.route] : []) ?? [];
 	const routesOnly: Array<Route> = [];
@@ -574,44 +574,40 @@ See https://developers.cloudflare.com/workers/platform/compatibility-dates for m
 	logger.log("Uploaded", workerName, formatTime(uploadMs));
 
 	// Update routing table for the script.
-	if (routesOnly.length > 0) {
-		deployments.push(
-			publishRoutes(routesOnly, { workerUrl, scriptName, notProd }).then(() => {
-				if (routesOnly.length > 10) {
-					return routesOnly
-						.slice(0, 9)
-						.map((route) => renderRoute(route))
-						.concat([`...and ${routesOnly.length - 10} more routes`]);
-				}
-				return routesOnly.map((route) => renderRoute(route));
-			})
-		);
-	}
+	deployments.push(
+		publishRoutes(routesOnly, { workerUrl, scriptName, notProd }).then(() => {
+			if (routesOnly.length > 10) {
+				return routesOnly
+					.slice(0, 9)
+					.map((route) => renderRoute(route))
+					.concat([`...and ${routesOnly.length - 10} more routes`]);
+			}
+			return routesOnly.map((route) => renderRoute(route));
+		})
+	);
 
 	// Update custom domains for the script
-	if (customDomainsOnly.length > 0) {
-		deployments.push(publishCustomDomains(workerUrl, customDomainsOnly));
-	}
+	deployments.push(publishCustomDomains(workerUrl, customDomainsOnly));
 
 	// Configure any schedules for the script.
 	// TODO: rename this to `schedules`?
-	if (triggers && triggers.length) {
-		deployments.push(
-			fetchResult(`${workerUrl}/schedules`, {
-				// Note: PUT will override previous schedules on this script.
-				method: "PUT",
-				body: JSON.stringify(triggers.map((cron) => ({ cron }))),
-				headers: {
-					"Content-Type": "application/json",
-				},
-			}).then(() => triggers.map((trigger) => `schedule: ${trigger}`))
-		);
-	}
+	deployments.push(
+		fetchResult(`${workerUrl}/schedules`, {
+			// Note: PUT will override previous schedules on this script.
+			method: "PUT",
+			body: JSON.stringify(triggers.map((cron) => ({ cron }))),
+			headers: {
+				"Content-Type": "application/json",
+			},
+		}).then(() => triggers.map((trigger) => `schedule: ${trigger}`))
+	);
 
 	const targets = await Promise.all(deployments);
 	const deployMs = Date.now() - start - uploadMs;
 
-	if (deployments.length > 0) {
+	const hasPublishTargets =
+		deployToWorkersDev || routes.length !== 0 || triggers.length !== 0;
+	if (hasPublishTargets) {
 		logger.log("Published", workerName, formatTime(deployMs));
 		for (const target of targets.flat()) {
 			logger.log(" ", target);

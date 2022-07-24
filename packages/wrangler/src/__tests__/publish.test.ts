@@ -60,6 +60,7 @@ describe("publish", () => {
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest({ expectedType: "esm", sendScriptIds: true });
+			mockPublishTargets();
 			mockOAuthServerCallback();
 
 			await runWrangler("publish ./index");
@@ -90,6 +91,7 @@ describe("publish", () => {
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockOAuthServerCallback();
 			const accessTokenRequest = mockGrantAccessToken({ respondWith: "ok" });
 			mockGrantAuthorization({ respondWith: "success" });
@@ -118,6 +120,7 @@ describe("publish", () => {
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			writeAuthConfigFile({
 				api_token: "some-api-token",
 			});
@@ -160,6 +163,7 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockSubDomainRequest();
 				mockUploadWorkerRequest();
+				mockPublishTargets();
 				mockOAuthServerCallback();
 
 				await runWrangler("publish index.js");
@@ -183,6 +187,7 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockSubDomainRequest();
 				mockUploadWorkerRequest();
+				mockPublishTargets();
 				mockOAuthServerCallback();
 				mockGetMemberships([]);
 
@@ -209,6 +214,7 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockSubDomainRequest();
 				mockUploadWorkerRequest();
+				mockPublishTargets();
 				mockOAuthServerCallback();
 				mockGetMemberships([
 					{ id: "IG-88", account: { id: "1701", name: "enterprise" } },
@@ -237,6 +243,7 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockSubDomainRequest();
 				mockUploadWorkerRequest();
+				mockPublishTargets();
 				mockOAuthServerCallback();
 				mockGetMemberships([
 					{ id: "IG-88", account: { id: "1701", name: "enterprise" } },
@@ -263,6 +270,7 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockSubDomainRequest();
 				mockUploadWorkerRequest();
+				mockPublishTargets();
 				mockOAuthServerCallback();
 				mockGetMemberships([]);
 
@@ -289,6 +297,7 @@ describe("publish", () => {
 				env: "some-env",
 				legacyEnv: true,
 			});
+			mockPublishTargets();
 			await runWrangler("publish index.js --env some-env");
 			expect(std.out).toMatchInlineSnapshot(`
 			        "Total Upload: 0xx KiB / gzip: 0xx KiB
@@ -308,6 +317,7 @@ describe("publish", () => {
 				mockUploadWorkerRequest({
 					legacyEnv: true,
 				});
+				mockPublishTargets();
 				await runWrangler("publish index.js --legacy-env true");
 				expect(std.out).toMatchInlineSnapshot(`
 			          "Total Upload: 0xx KiB / gzip: 0xx KiB
@@ -327,6 +337,7 @@ describe("publish", () => {
 					env: "some-env",
 					legacyEnv: true,
 				});
+				mockPublishTargets();
 				await runWrangler("publish index.js --env some-env --legacy-env true");
 				expect(std.out).toMatchInlineSnapshot(`
 			          "Total Upload: 0xx KiB / gzip: 0xx KiB
@@ -346,6 +357,7 @@ describe("publish", () => {
 					env: "some-env",
 					legacyEnv: true,
 				});
+				mockPublishTargets();
 				await runWrangler("publish index.js --env some-env --legacy-env true");
 				expect(std.out).toMatchInlineSnapshot(`
 			          "Total Upload: 0xx KiB / gzip: 0xx KiB
@@ -416,6 +428,7 @@ describe("publish", () => {
 				mockUploadWorkerRequest({
 					legacyEnv: false,
 				});
+				mockPublishTargets();
 				await runWrangler("publish index.js --legacy-env false");
 				expect(std.out).toMatchInlineSnapshot(`
 			          "Total Upload: 0xx KiB / gzip: 0xx KiB
@@ -442,6 +455,7 @@ describe("publish", () => {
 					env: "some-env",
 					legacyEnv: false,
 				});
+				mockPublishTargets();
 				await runWrangler("publish index.js --env some-env --legacy-env false");
 				expect(std.out).toMatchInlineSnapshot(`
 			          "Total Upload: 0xx KiB / gzip: 0xx KiB
@@ -484,6 +498,7 @@ describe("publish", () => {
 			],
 			expectedCompatibilityDate: "2022-01-12",
 		});
+		mockPublishTargets();
 		mockSubDomainRequest();
 		await runWrangler("publish ./some-path/worker/index.js");
 		expect(std.out).toMatchInlineSnapshot(`
@@ -506,6 +521,8 @@ describe("publish", () => {
 			writeWorkerSource();
 			mockUpdateWorkerRequest({ enabled: false });
 			mockUploadWorkerRequest({ expectedType: "esm" });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockPublishRoutesRequest({ routes: ["example.com/some-route/*"] });
 			await runWrangler("publish ./index");
 		});
@@ -519,6 +536,8 @@ describe("publish", () => {
 			mockUploadWorkerRequest({ expectedType: "esm" });
 			mockSubDomainRequest();
 			mockPublishRoutesRequest({ routes: [] });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			await runWrangler("publish ./index");
 			expect(std).toMatchInlineSnapshot(`
 			Object {
@@ -554,6 +573,8 @@ describe("publish", () => {
 			writeWorkerSource();
 			mockUpdateWorkerRequest({ enabled: false });
 			mockUploadWorkerRequest({ expectedType: "esm" });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockPublishRoutesRequest({
 				routes: [
 					"some-example.com/some-route/*",
@@ -613,6 +634,8 @@ describe("publish", () => {
 				env: "staging",
 				legacyEnv: false,
 			});
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockPublishRoutesRequest({
 				routes: [
 					"some-example.com/some-route/*",
@@ -666,6 +689,8 @@ describe("publish", () => {
 				legacyEnv: true,
 				env: "dev",
 			});
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockPublishRoutesRequest({
 				routes: ["dev-example.com/some-route/*"],
 				legacyEnv: true,
@@ -689,6 +714,8 @@ describe("publish", () => {
 				expectedType: "esm",
 				env: "dev",
 			});
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockPublishRoutesRequest({
 				routes: ["dev-example.com/some-route/*"],
 				env: "dev",
@@ -703,6 +730,8 @@ describe("publish", () => {
 			writeWorkerSource();
 			mockUpdateWorkerRequest({ enabled: false });
 			mockUploadWorkerRequest({ expectedType: "esm" });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			// Simulate the bulk-routes API failing with a not authorized error.
 			mockUnauthorizedPublishRoutesRequest();
 			// Simulate that the worker has already been deployed to another route in this zone.
@@ -753,6 +782,8 @@ describe("publish", () => {
 			writeWorkerSource();
 			mockUpdateWorkerRequest({ env: "staging", enabled: false });
 			mockUploadWorkerRequest({ env: "staging", expectedType: "esm" });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			// Simulate the bulk-routes API failing with a not authorized error.
 			mockUnauthorizedPublishRoutesRequest({ env: "staging" });
 			// Simulate that the worker has already been deployed to another route in this zone.
@@ -782,6 +813,8 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockUpdateWorkerRequest({ enabled: false });
 				mockUploadWorkerRequest({ expectedType: "esm" });
+				mockDefaultRoutesPublish();
+				mockDefaultSchedulesPublish();
 				mockPublishCustomDomainsRequest({
 					publishFlags: {
 						override_scope: true,
@@ -801,6 +834,8 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockUpdateWorkerRequest({ enabled: false });
 				mockUploadWorkerRequest({ expectedType: "esm" });
+				mockDefaultRoutesPublish();
+				mockDefaultSchedulesPublish();
 				mockPublishCustomDomainsRequestConflictWithoutOverride({
 					originConflicts: true,
 					domains: [{ hostname: "api.example.com" }],
@@ -820,6 +855,8 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockUpdateWorkerRequest({ enabled: false });
 				mockUploadWorkerRequest({ expectedType: "esm" });
+				mockDefaultRoutesPublish();
+				mockDefaultSchedulesPublish();
 				mockPublishCustomDomainsRequestConflictWithoutOverride({
 					dnsRecordConflicts: true,
 					domains: [{ hostname: "api.example.com" }],
@@ -839,6 +876,8 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockUpdateWorkerRequest({ enabled: false });
 				mockUploadWorkerRequest({ expectedType: "esm" });
+				mockDefaultRoutesPublish();
+				mockDefaultSchedulesPublish();
 				mockPublishCustomDomainsRequestConflictWithoutOverride({
 					originConflicts: true,
 					dnsRecordConflicts: true,
@@ -889,6 +928,8 @@ describe("publish", () => {
 				writeWorkerSource();
 				mockUpdateWorkerRequest({ enabled: false });
 				mockUploadWorkerRequest({ expectedType: "esm" });
+				mockDefaultRoutesPublish();
+				mockDefaultSchedulesPublish();
 				mockPublishCustomDomainsRequestConflictWithoutOverride({
 					dnsRecordConflicts: true,
 					domains: [{ hostname: "api.example.com" }],
@@ -912,6 +953,7 @@ describe("publish", () => {
 			writeWranglerToml();
 			writeWorkerSource();
 			mockUploadWorkerRequest({ expectedType: "esm" });
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await runWrangler("publish ./index");
@@ -929,6 +971,7 @@ describe("publish", () => {
 			writeWranglerToml();
 			writeWorkerSource({ type: "sw" });
 			mockUploadWorkerRequest({ expectedType: "sw" });
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await runWrangler("publish ./index");
@@ -946,6 +989,7 @@ describe("publish", () => {
 			writeWranglerToml({ main: "./index.js" });
 			writeWorkerSource();
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await runWrangler("publish");
@@ -965,6 +1009,7 @@ describe("publish", () => {
 			});
 			writeWorkerSource({ basePath: "foo" });
 			mockUploadWorkerRequest({ expectedEntry: "var foo = 100;" });
+			mockPublishTargets();
 			mockSubDomainRequest();
 			process.chdir("foo");
 			await runWrangler("publish");
@@ -982,6 +1027,7 @@ describe("publish", () => {
 			writeWranglerToml({ build: { upload: { main: "./index.js" } } });
 			writeWorkerSource({ basePath: "./dist" });
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await runWrangler("publish");
@@ -1018,6 +1064,7 @@ describe("publish", () => {
 			});
 			writeWorkerSource({ basePath: "./foo" });
 			mockUploadWorkerRequest({ expectedEntry: "var foo = 100;" });
+			mockPublishTargets();
 			mockSubDomainRequest();
 			process.chdir("foo");
 			await runWrangler("publish");
@@ -1069,6 +1116,7 @@ describe("publish", () => {
 			writeWranglerToml();
 			writeWorkerSource({ format: "ts" });
 			mockUploadWorkerRequest({ expectedEntry: "var foo = 100;" });
+			mockPublishTargets();
 			mockSubDomainRequest();
 			await runWrangler("publish index.ts");
 
@@ -1088,6 +1136,7 @@ describe("publish", () => {
 				expectedEntry: "var foo = 100;",
 				expectedType: "sw",
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			await runWrangler("publish index.ts");
 
@@ -1120,6 +1169,7 @@ export default{
 						"Hello, World!",
 				},
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			await runWrangler("publish index.js");
 			expect(std.out).toMatchInlineSnapshot(`
@@ -1135,6 +1185,7 @@ export default{
 			writeWranglerToml();
 			writeWorkerSource({ basePath: "./src" });
 			mockUploadWorkerRequest({ expectedEntry: "var foo = 100;" });
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await runWrangler("publish ./src/index.js");
@@ -1229,6 +1280,7 @@ addEventListener('fetch', event => {});`
 				expectedEntry: "var foo = 100;",
 				expectedType: "sw",
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await runWrangler("publish ./src/index.js");
@@ -1249,6 +1301,7 @@ addEventListener('fetch', event => {});`
 			});
 			writeWorkerSource();
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await expect(runWrangler("publish ./index.js")).rejects
@@ -1301,6 +1354,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1356,6 +1410,7 @@ addEventListener('fetch', event => {});`
 			writeAssets(assets);
 			process.chdir("..");
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1410,6 +1465,7 @@ addEventListener('fetch', event => {});`
 			writeWranglerToml();
 			writeWorkerSource();
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			await expect(
 				runWrangler("publish")
@@ -1439,6 +1495,7 @@ addEventListener('fetch', event => {});`
 			};
 			writeAssets(assets);
 			mockUploadWorkerRequest({ expectedMainModule: "stdin.js" });
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1491,6 +1548,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1528,6 +1586,7 @@ addEventListener('fetch', event => {});`
 			mockUploadWorkerRequest({
 				expectedMainModule: "stdin.js",
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1710,6 +1769,7 @@ addEventListener('fetch', event => {});`
 			mockUploadWorkerRequest({
 				expectedMainModule: "stdin.js",
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1755,6 +1815,7 @@ addEventListener('fetch', event => {});`
 			mockUploadWorkerRequest({
 				expectedMainModule: "stdin.js",
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1813,6 +1874,7 @@ addEventListener('fetch', event => {});`
 						'{"subdir/file-1.txt":"subdir/file-1.2ca234f380.txt","subdir/file-2.txt":"subdir/file-2.5938485188.txt"}',
 				},
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1870,6 +1932,7 @@ addEventListener('fetch', event => {});`
 					},
 				],
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1921,6 +1984,7 @@ addEventListener('fetch', event => {});`
 						'{"file-1.txt":"file-1.2ca234f380.txt","file-2.txt":"file-2.5938485188.txt"}',
 				},
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -1971,6 +2035,7 @@ addEventListener('fetch', event => {});`
 					},
 				],
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2021,6 +2086,7 @@ addEventListener('fetch', event => {});`
 					},
 				],
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2059,6 +2125,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			// Put file-1 in the KV namespace
@@ -2102,6 +2169,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2142,6 +2210,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2183,6 +2252,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2224,6 +2294,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2265,6 +2336,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2306,6 +2378,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2352,6 +2425,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2399,6 +2473,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2444,6 +2519,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2488,6 +2564,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2586,6 +2663,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets([longFilePathAsset]);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2626,6 +2704,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			writeAssets(assets);
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, [
@@ -2697,6 +2776,7 @@ addEventListener('fetch', event => {});`
 						'{"file-1.txt":"file-1.2ca234f380.txt","file-2.txt":"file-2.5938485188.txt"}',
 				},
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2738,6 +2818,7 @@ addEventListener('fetch', event => {});`
 			mockSubDomainRequest();
 			writeWorkerSource();
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
 			mockUploadAssetsToKVRequest(kvNamespace.id, assets);
@@ -2779,6 +2860,7 @@ addEventListener('fetch', event => {});`
 			mockUploadWorkerRequest({
 				expectedMainModule: "stdin.js",
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockListKVNamespacesRequest(kvNamespace);
 			mockKeyListRequest(kvNamespace.id, []);
@@ -2812,6 +2894,7 @@ addEventListener('fetch', event => {});`
 			writeWranglerToml();
 			writeWorkerSource();
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await runWrangler("publish ./index");
@@ -2831,6 +2914,7 @@ addEventListener('fetch', event => {});`
 			});
 			writeWorkerSource();
 			mockUploadWorkerRequest({ available_on_subdomain: false });
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockUpdateWorkerRequest({ enabled: true });
 
@@ -2851,6 +2935,7 @@ addEventListener('fetch', event => {});`
 			});
 			writeWorkerSource();
 			mockUploadWorkerRequest({ available_on_subdomain: true });
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await runWrangler("publish ./index");
@@ -2870,6 +2955,7 @@ addEventListener('fetch', event => {});`
 			});
 			writeWorkerSource();
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockUpdateWorkerRequest({ enabled: false });
 
 			await runWrangler("publish ./index");
@@ -2889,6 +2975,7 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			mockSubDomainRequest("test-sub-domain", false);
 			mockUploadWorkerRequest({ available_on_subdomain: false });
+			mockPublishTargets();
 
 			// note the lack of a mock for the subdomain disable request
 
@@ -2914,6 +3001,7 @@ addEventListener('fetch', event => {});`
 			mockUploadWorkerRequest({
 				env: "dev",
 			});
+			mockPublishTargets();
 			mockUpdateWorkerRequest({ enabled: false, env: "dev" });
 
 			await runWrangler("publish ./index --env dev --legacy-env false");
@@ -2939,6 +3027,7 @@ addEventListener('fetch', event => {});`
 			mockUploadWorkerRequest({
 				env: "dev",
 			});
+			mockPublishTargets();
 			mockUpdateWorkerRequest({ enabled: false, env: "dev" });
 
 			await runWrangler("publish ./index --env dev --legacy-env false");
@@ -2963,6 +3052,7 @@ addEventListener('fetch', event => {});`
 			mockUploadWorkerRequest({
 				env: "dev",
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockUpdateWorkerRequest({ enabled: true, env: "dev" });
 
@@ -2990,6 +3080,7 @@ addEventListener('fetch', event => {});`
 			mockUploadWorkerRequest({
 				env: "dev",
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockUpdateWorkerRequest({ enabled: true, env: "dev" });
 
@@ -3018,6 +3109,7 @@ addEventListener('fetch', event => {});`
 				expectedCompatibilityDate: "2022-01-12",
 				expectedCompatibilityFlags: ["no_global_navigator"],
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockUpdateWorkerRequest({ enabled: true, env: "dev" });
 
@@ -3049,6 +3141,7 @@ addEventListener('fetch', event => {});`
 				expectedCompatibilityDate: "2022-01-13",
 				expectedCompatibilityFlags: ["global_navigator"],
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockUpdateWorkerRequest({ enabled: true, env: "dev" });
 
@@ -3080,6 +3173,7 @@ addEventListener('fetch', event => {});`
 				expectedCompatibilityDate: "2022-01-14",
 				expectedCompatibilityFlags: ["url_standard"],
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockUpdateWorkerRequest({ enabled: true, env: "dev" });
 
@@ -3119,6 +3213,7 @@ addEventListener('fetch', event => {});`
 			writeWranglerToml();
 			writeWorkerSource();
 			mockUploadWorkerRequest({ available_on_subdomain: false });
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockUpdateWorkerRequest({ enabled: true });
 
@@ -3137,6 +3232,7 @@ addEventListener('fetch', event => {});`
 			writeWranglerToml({ workers_dev: true });
 			writeWorkerSource();
 			mockUploadWorkerRequest({ available_on_subdomain: false });
+			mockPublishTargets();
 			mockSubDomainRequest();
 			mockUpdateWorkerRequest({ enabled: true });
 
@@ -3157,6 +3253,7 @@ addEventListener('fetch', event => {});`
 			});
 			writeWorkerSource();
 			mockUploadWorkerRequest();
+			mockPublishTargets();
 			mockSubDomainRequest("does-not-exist", false);
 
 			await expect(runWrangler("publish ./index")).rejects
@@ -3177,6 +3274,8 @@ addEventListener('fetch', event => {});`
 			mockUpdateWorkerRequest({
 				enabled: false,
 			});
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockPublishRoutesRequest({ routes: ["http://example.com/*"] });
 			await runWrangler("publish index.js");
 
@@ -3202,6 +3301,8 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest({ env: "production", legacyEnv: true });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockUpdateWorkerRequest({
 				enabled: false,
 				env: "production",
@@ -3235,6 +3336,8 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest({ env: "production", legacyEnv: true });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockUpdateWorkerRequest({
 				enabled: false,
 				env: "production",
@@ -3265,6 +3368,8 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest();
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockUpdateWorkerRequest({
 				enabled: false,
 			});
@@ -3296,6 +3401,8 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest({ env: "production", legacyEnv: true });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockUpdateWorkerRequest({
 				enabled: false,
 				env: "production",
@@ -3331,6 +3438,8 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest({ env: "production", legacyEnv: true });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockUpdateWorkerRequest({
 				enabled: false,
 				env: "production",
@@ -3366,6 +3475,8 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest({ env: "production", legacyEnv: true });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockUpdateWorkerRequest({
 				enabled: false,
 				env: "production",
@@ -3400,6 +3511,8 @@ addEventListener('fetch', event => {});`
 			writeWorkerSource();
 			mockSubDomainRequest();
 			mockUploadWorkerRequest({ env: "production", legacyEnv: true });
+			mockDefaultCustomDomainsPublish();
+			mockDefaultSchedulesPublish();
 			mockUpdateWorkerRequest({
 				enabled: false,
 				env: "production",
@@ -3517,6 +3630,7 @@ addEventListener('fetch', event => {});`
 			mockUploadWorkerRequest({
 				expectedEntry: "return new Response(123)",
 			});
+			mockPublishTargets();
 			mockSubDomainRequest();
 
 			await runWrangler("publish index.js");
@@ -3542,6 +3656,7 @@ addEventListener('fetch', event => {});`
 				mockUploadWorkerRequest({
 					expectedEntry: "return new Response(123)",
 				});
+				mockPublishTargets();
 				mockSubDomainRequest();
 
 				await runWrangler("publish index.js");
@@ -3650,6 +3765,7 @@ addEventListener('fetch', event => {});`
 				expectedEntry: 'fetch(){return new Response("hello Cpt Picard")',
 			});
 
+			mockPublishTargets();
 			mockSubDomainRequest();
 			await runWrangler("publish index.js --minify");
 			expect(std.out).toMatchInlineSnapshot(`
@@ -3689,6 +3805,7 @@ addEventListener('fetch', event => {});`
 				expectedEntry: `fetch(){return new Response("hello Cpt Picard")`,
 			});
 
+			mockPublishTargets();
 			mockSubDomainRequest();
 			await runWrangler("publish -e testEnv index.js");
 			expect(std.out).toMatchInlineSnapshot(`
@@ -3713,6 +3830,7 @@ addEventListener('fetch', event => {});`
 				`export class SomeClass{}; export default {};`
 			);
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest();
 			await runWrangler("publish index.js");
 			expect(std.out).toMatchInlineSnapshot(`
@@ -3763,6 +3881,7 @@ addEventListener('fetch', event => {});`
 				`export class SomeClass{}; export default {};`
 			);
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest();
 			await runWrangler("publish index.js");
 			expect(std.out).toMatchInlineSnapshot(`
@@ -3797,6 +3916,7 @@ addEventListener('fetch', event => {});`
 			);
 			mockSubDomainRequest();
 			mockLegacyScriptData({ scripts: [] }); // no previously uploaded scripts at all
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedMigrations: {
 					new_tag: "v2",
@@ -3843,6 +3963,7 @@ addEventListener('fetch', event => {});`
 			mockLegacyScriptData({
 				scripts: [{ id: "test-name", migration_tag: "v1" }],
 			});
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedMigrations: {
 					old_tag: "v1",
@@ -3895,6 +4016,7 @@ addEventListener('fetch', event => {});`
 			mockLegacyScriptData({
 				scripts: [{ id: "test-name", migration_tag: "v3" }],
 			});
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedMigrations: undefined,
 			});
@@ -3937,6 +4059,7 @@ addEventListener('fetch', event => {});`
 				);
 				mockSubDomainRequest();
 				mockServiceScriptData({}); // no scripts at all
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					legacyEnv: false,
 					expectedMigrations: {
@@ -3999,6 +4122,7 @@ addEventListener('fetch', event => {});`
 				);
 				mockSubDomainRequest();
 				mockServiceScriptData({ env: "xyz" }); // no scripts at all
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					legacyEnv: false,
 					env: "xyz",
@@ -4054,6 +4178,7 @@ addEventListener('fetch', event => {});`
 				mockServiceScriptData({
 					script: { id: "test-name", migration_tag: "v1" },
 				});
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					legacyEnv: false,
 					expectedMigrations: {
@@ -4122,6 +4247,7 @@ addEventListener('fetch', event => {});`
 					script: { id: "test-name", migration_tag: "v1" },
 					env: "xyz",
 				});
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					legacyEnv: false,
 					env: "xyz",
@@ -4237,6 +4363,7 @@ addEventListener('fetch', event => {});`
 			fs.writeFileSync("./some-data-blob.bin", "some data");
 			fs.writeFileSync("./more-data-blob.bin", "more data");
 
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedType: "sw",
 				expectedBindings: [
@@ -4709,6 +4836,7 @@ addEventListener('fetch', event => {});`
 						{ name: "TESTWASMNAME", part: "TESTWASMNAME", type: "wasm_module" },
 					],
 				});
+				mockPublishTargets();
 				mockSubDomainRequest();
 				await runWrangler("publish index.js");
 				expect(std.out).toMatchInlineSnapshot(`
@@ -4779,6 +4907,7 @@ addEventListener('fetch', event => {});`
 					],
 					expectedCompatibilityDate: "2022-01-12",
 				});
+				mockPublishTargets();
 				mockSubDomainRequest();
 				await runWrangler("publish index.js --config ./path/to/wrangler.toml");
 				expect(std.out).toMatchInlineSnapshot(`
@@ -4815,6 +4944,7 @@ addEventListener('fetch', event => {});`
 						},
 					],
 				});
+				mockPublishTargets();
 				mockSubDomainRequest();
 				await runWrangler("publish index.js");
 				expect(std.out).toMatchInlineSnapshot(`
@@ -4849,6 +4979,7 @@ addEventListener('fetch', event => {});`
 						},
 					],
 				});
+				mockPublishTargets();
 				mockSubDomainRequest();
 				await runWrangler("publish index.js");
 				expect(std.out).toMatchInlineSnapshot(`
@@ -4923,6 +5054,7 @@ addEventListener('fetch', event => {});`
 					],
 					expectedCompatibilityDate: "2022-01-12",
 				});
+				mockPublishTargets();
 				mockSubDomainRequest();
 				await runWrangler("publish index.js --config ./path/to/wrangler.toml");
 				expect(std.out).toMatchInlineSnapshot(`
@@ -4960,6 +5092,7 @@ addEventListener('fetch', event => {});`
 						},
 					],
 				});
+				mockPublishTargets();
 				mockSubDomainRequest();
 				await runWrangler("publish index.js");
 				expect(std.out).toMatchInlineSnapshot(`
@@ -5034,6 +5167,7 @@ addEventListener('fetch', event => {});`
 					],
 					expectedCompatibilityDate: "2022-01-12",
 				});
+				mockPublishTargets();
 				mockSubDomainRequest();
 				await runWrangler("publish index.js --config ./path/to/wrangler.toml");
 				expect(std.out).toMatchInlineSnapshot(`
@@ -5072,6 +5206,7 @@ addEventListener('fetch', event => {});`
 						},
 					],
 				});
+				mockPublishTargets();
 
 				await runWrangler("publish index.js");
 				expect(std.out).toMatchInlineSnapshot(`
@@ -5097,6 +5232,7 @@ addEventListener('fetch', event => {});`
 				});
 				writeWorkerSource();
 				mockSubDomainRequest();
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					expectedBindings: [
 						{ bucket_name: "foo-bucket", name: "FOO", type: "r2_bucket" },
@@ -5139,6 +5275,7 @@ addEventListener('fetch', event => {});`
 				mockLegacyScriptData({
 					scripts: [{ id: "test-name", migration_tag: "v1" }],
 				});
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					expectedBindings: [
 						{
@@ -5177,6 +5314,7 @@ addEventListener('fetch', event => {});`
 				});
 				writeWorkerSource({ type: "sw" });
 				mockSubDomainRequest();
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					expectedType: "sw",
 					expectedBindings: [
@@ -5223,6 +5361,7 @@ addEventListener('fetch', event => {});`
 				mockLegacyScriptData({
 					scripts: [{ id: "test-name", migration_tag: "v1" }],
 				});
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					expectedType: "esm",
 					expectedBindings: [
@@ -5286,6 +5425,7 @@ addEventListener('fetch', event => {});`
 				});
 				writeWorkerSource();
 				mockSubDomainRequest();
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					expectedBindings: [
 						{
@@ -5330,6 +5470,7 @@ addEventListener('fetch', event => {});`
 				});
 				writeWorkerSource();
 				mockSubDomainRequest();
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					expectedBindings: [
 						{
@@ -5375,6 +5516,7 @@ addEventListener('fetch', event => {});`
 				});
 				writeWorkerSource();
 				mockSubDomainRequest();
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					expectedBindings: [
 						{
@@ -5418,6 +5560,7 @@ addEventListener('fetch', event => {});`
 				});
 				writeWorkerSource();
 				mockSubDomainRequest();
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					expectedBindings: [
 						{
@@ -5463,6 +5606,7 @@ addEventListener('fetch', event => {});`
 			fs.writeFileSync("./index.js", `import TEXT from './text.file';`);
 			fs.writeFileSync("./text.file", "SOME TEXT CONTENT");
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedType: "sw",
 				expectedBindings: [
@@ -5498,6 +5642,7 @@ addEventListener('fetch', event => {});`
 			);
 			fs.writeFileSync("./text.file", "SOME TEXT CONTENT");
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedType: "esm",
 				expectedBindings: [],
@@ -5531,6 +5676,7 @@ addEventListener('fetch', event => {});`
 			);
 			fs.writeFileSync("./text.file", "SOME TEXT CONTENT");
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedType: "esm",
 				expectedBindings: [],
@@ -5578,6 +5724,7 @@ addEventListener('fetch', event => {});`
 			fs.writeFileSync("./text.file", "SOME TEXT CONTENT");
 			fs.writeFileSync("./other.other", "SOME OTHER TEXT CONTENT");
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedType: "esm",
 				expectedBindings: [],
@@ -5682,6 +5829,7 @@ addEventListener('fetch', event => {});`
           }`
 				);
 				mockSubDomainRequest();
+				mockPublishTargets();
 				mockUploadWorkerRequest({
 					expectedEntry: `return new Response("some-node-env");`,
 				});
@@ -5709,6 +5857,7 @@ addEventListener('fetch', event => {});`
 			);
 			fs.writeFileSync("./text.file", "SOME TEXT CONTENT");
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedModules: {
 					"./2d91d1c4dd6e57d4f5432187ab7c25f45a8973f0-text.file":
@@ -5738,6 +5887,7 @@ addEventListener('fetch', event => {});`
 			);
 			fs.writeFileSync("./index.wasm", "SOME WASM CONTENT");
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedModules: {
 					"./94b240d0d692281e6467aa42043986e5c7eea034-index.wasm":
@@ -5769,6 +5919,7 @@ addEventListener('fetch', event => {});`
 			fs.mkdirSync("./inner", { recursive: true });
 			fs.writeFileSync("./inner/index.js", `export default 123`);
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest();
 
 			await runWrangler(
@@ -5808,6 +5959,7 @@ addEventListener('fetch', event => {});`
 				})
 			);
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedEntry: "var foo = 123;", // make sure it imported the module correctly
 			});
@@ -5838,6 +5990,7 @@ addEventListener('fetch', event => {});`
 				})
 			);
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest({
 				expectedEntry: "export {", // just check that the export is preserved
 			});
@@ -5861,6 +6014,7 @@ addEventListener('fetch', event => {});`
 			writeWranglerToml();
 			writeWorkerSource();
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest();
 			await runWrangler("publish index.js --outdir some-dir");
 			expect(fs.existsSync("some-dir/index.js")).toBe(true);
@@ -6005,6 +6159,7 @@ addEventListener('fetch', event => {});`
 				main: "index.js",
 			});
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest();
 			await runWrangler("publish");
 			expect(std).toMatchInlineSnapshot(`
@@ -6058,6 +6213,7 @@ addEventListener('fetch', event => {});`
 				main: "index.js",
 			});
 			mockSubDomainRequest();
+			mockPublishTargets();
 			mockUploadWorkerRequest();
 			await expect(runWrangler("publish")).rejects.toMatchInlineSnapshot(
 				`[ParseError: A request to the Cloudflare API (/accounts/some-account-id/workers/scripts/test-name) failed.]`
@@ -6416,6 +6572,63 @@ function mockPublishRoutesFallbackRequest(route: {
 		expect(JSON.parse(body as string)).toEqual(route);
 		return route.pattern;
 	});
+}
+
+function mockDefaultCustomDomainsPublish() {
+	const changeset = { added: [], updated: [], conflicting: [], removed: [] };
+	setMockResponse(
+		`/accounts/:accountId/workers/scripts/:scriptName/domains/changeset`,
+		"POST",
+		() => changeset
+	);
+	setMockResponse(
+		`/accounts/:accountId/workers/scripts/:serviceName/environments/:environmentName/domains/changeset`,
+		"POST",
+		() => changeset
+	);
+	setMockResponse(
+		`/accounts/:accountId/workers/scripts/:scriptName/domains`,
+		"PUT",
+		() => []
+	);
+	setMockResponse(
+		`/accounts/:accountId/workers/services/:serviceName/environments/:environmentName/domains`,
+		"PUT",
+		() => []
+	);
+}
+
+function mockDefaultRoutesPublish() {
+	setMockResponse(
+		`/accounts/:accountId/workers/scripts/:scriptName/routes`,
+		"PUT",
+		() => []
+	);
+	setMockResponse(
+		`/accounts/:accountId/workers/services/:serviceName/environments/:environmentName/routes`,
+		"PUT",
+		() => []
+	);
+}
+
+function mockDefaultSchedulesPublish() {
+	setMockResponse(
+		`/accounts/:accountId/workers/scripts/:scriptName/schedules`,
+		"PUT",
+		() => []
+	);
+	setMockResponse(
+		`/accounts/:accountId/workers/services/:serviceName/environments/:environmentName/schedules`,
+		"PUT",
+		() => []
+	);
+}
+
+function mockPublishTargets() {
+	// mocks all the default publish targets
+	mockDefaultCustomDomainsPublish();
+	mockDefaultRoutesPublish();
+	mockDefaultSchedulesPublish();
 }
 
 function mockPublishCustomDomainsRequest({
