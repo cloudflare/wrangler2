@@ -1,0 +1,13 @@
+{
+	"name": "service-bindings-app",
+	"version": "0.0.0",
+	"private": true,
+	"description": "A test for service bindings",
+	"keywords": [],
+	"license": "ISC",
+	"author": "",
+	"main": "index.js",
+	"scripts": {
+		"dev": "npx concurrently 'wrangler dev a/index.ts --local' 'sleep 1 && wrangler dev b/index.ts --local'"
+	}
+}

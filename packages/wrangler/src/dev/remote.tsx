@@ -322,15 +322,37 @@ export function useWorker(props: {
 				routes: props.routes,
 			};
 
-			setToken(
-				await createWorkerPreview(
-					init,
-					workerAccount,
-					workerCtx,
-					session,
-					abortController.signal
-				)
+			const workerPreviewToken = await createWorkerPreview(
+				init,
+				workerAccount,
+				workerCtx,
+				session,
+				abortController.signal
 			);
+
+			setToken(workerPreviewToken);
+
+			// TODO: Once we get service bindings working in the
+			// edge preview server, we can define remote dev service bindings
+			// and you can uncomment this code.
+			// https://github.com/cloudflare/wrangler2/issues/1182
+
+			/*
+			if (name) {
+				await registerWorker(name, {
+					mode: "remote",
+					// upstream protocol is always https (https://github.com/cloudflare/wrangler2/issues/583)
+					protocol: "https",
+					port: undefined,
+					host: workerPreviewToken.host,
+					headers: {
+						"cf-workers-preview-token": workerPreviewToken.value,
+						host: workerPreviewToken.host,
+					},
+				});
+			}
+			*/
+
 			onReady?.();
 		}
 		start().catch((err) => {

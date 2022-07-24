@@ -35,7 +35,7 @@ Consider using a Node.js version manager such as https://volta.sh/ or https://gi
 		// - maybe we can generate a certificate that concatenates with ours?
 		//
 		//  I do think it'll be rare that someone wants to add a cert AND
-		//  use cloudflare WARP, but let's wait till the situation actually
+		//  use Cloudflare WARP, but let's wait till the situation actually
 		//  arises before we do anything about it
 	} else {
 		const osTempDir = os.tmpdir();
